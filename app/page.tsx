@@ -1,24 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import Link from "next/link"
+import { useState } from "react"
 
-function DipLogo() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="44"
-      height="25"
-      fill="none"
-      className="logo"
-      aria-label="Dip"
-    >
-      <path
-        fill="currentColor"
-        d="M12.58 0a4.083 4.083 0 0 0-2.897 1.205 4.124 4.124 0 0 0-1.2 2.91V8.23h-.288c0-.814-.24-1.609-.691-2.285a4.101 4.101 0 0 0-1.84-1.515 4.081 4.081 0 0 0-4.465.893 4.12 4.12 0 0 0-.887 4.485 4.11 4.11 0 0 0 1.51 1.846 4.085 4.085 0 0 0 2.276.694v.307c-.81 0-1.603.241-2.277.694a4.112 4.112 0 0 0-1.51 1.846 4.131 4.131 0 0 0 .89 4.485 4.092 4.092 0 0 0 4.465.892 4.102 4.102 0 0 0 1.839-1.516c.45-.676.69-1.472.69-2.286h.288c0 .814.24 1.61.69 2.286a4.102 4.102 0 0 0 1.84 1.516 4.082 4.082 0 0 0 4.465-.892 4.12 4.12 0 0 0 .888-4.485 4.111 4.111 0 0 0-1.51-1.846 4.085 4.085 0 0 0-2.276-.694v-.307a4.081 4.081 0 0 0 2.899-1.207 4.114 4.114 0 0 0 1.199-2.91V4.114a4.124 4.124 0 0 0-1.2-2.91A4.089 4.089 0 0 0 12.58 0ZM8.34 13.9a1.39 1.39 0 0 1-1.29-.864 1.406 1.406 0 0 1 .303-1.527 1.392 1.392 0 0 1 2.38.991c0 .371-.147.727-.408.99-.262.262-.616.41-.986.41ZM25.991 8.281a4.18 4.18 0 0 0-.645-2.234 4.155 4.155 0 0 0-1.738-1.539 4.133 4.133 0 0 0-4.413.563 4.183 4.183 0 0 0-.185 6.251c.575.541 1.292.906 2.067 1.052v.252a4.146 4.146 0 0 0-2.547 1.586 4.18 4.18 0 0 0 .518 5.588 4.139 4.139 0 0 0 5.589 0 4.18 4.18 0 0 0 .518-5.588 4.146 4.146 0 0 0-2.547-1.586v-.252a4.144 4.144 0 0 0 2.427-1.434 4.177 4.177 0 0 0 .956-2.659ZM39.587 12.655v-.308c.81 0 1.602-.241 2.276-.693a4.111 4.111 0 0 0 1.51-1.847 4.131 4.131 0 0 0-.887-4.484 4.092 4.092 0 0 0-4.465-.894 4.101 4.101 0 0 0-1.84 1.515 4.128 4.128 0 0 0-.691 2.286h-.288c0-.814-.24-1.61-.691-2.286a4.101 4.101 0 0 0-1.84-1.515 4.081 4.081 0 0 0-4.464.894 4.132 4.132 0 0 0-.888 4.484c.31.752.835 1.394 1.509 1.846a4.086 4.086 0 0 0 2.276.694v.308a4.088 4.088 0 0 0-2.897 1.205 4.124 4.124 0 0 0-1.2 2.91v4.115c0 1.091.431 2.138 1.2 2.91a4.089 4.089 0 0 0 5.795 0 4.124 4.124 0 0 0 1.2-2.91v-4.116h.288c0 .814.24 1.61.69 2.286a4.102 4.102 0 0 0 1.839 1.516 4.082 4.082 0 0 0 4.466-.892 4.131 4.131 0 0 0 .888-4.485 4.111 4.111 0 0 0-1.51-1.846 4.085 4.085 0 0 0-2.276-.694ZM35.346 13.9a1.39 1.39 0 0 1-1.289-.864 1.406 1.406 0 0 1 .302-1.526 1.393 1.393 0 0 1 2.38.99c0 .371-.147.727-.408.99-.261.262-.616.41-.985.41Z"
-      />
-    </svg>
-  )
-}
+import { GeneralPurposeIdentity } from "@/components/general-purpose-identity"
+import type { IdentityPattern } from "@/components/gp-product-scales"
 
 function CmdkLogo() {
   return (
@@ -55,55 +41,52 @@ function BasicsLogo() {
   )
 }
 
-function formatGreeting(date: Date) {
-  const time = date
-    .toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-    .replace(" ", "")
-    .toLowerCase()
-  const hour = date.getHours()
-  const greeting = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"
-
-  return `It's ${time}. Good ${greeting}.`
-}
-
-function TimeGreeting() {
-  const [greeting, setGreeting] = useState(() => formatGreeting(new Date()))
-
-  useEffect(() => {
-    const update = () => setGreeting(formatGreeting(new Date()))
-    update()
-    const interval = window.setInterval(update, 30_000)
-
-    return () => window.clearInterval(interval)
-  }, [])
-
-  return (
-    <div className="time-greeting" aria-live="polite" suppressHydrationWarning>
-      {greeting}
-    </div>
-  )
-}
-
 const team = [
-  ["Benji Taylor", "https://x.com/benjitaylor"],
-  ["Dennis Jin", "https://x.com/seldom"],
-  ["Alex Vanderzon", "https://x.com/alexvanderzon"],
-  ["Paco Coursey", "https://x.com/pacocoursey"],
+  ["Ed Bayes", "https://edbayes.com"],
+  ["Trevor Cobb", "https://trevorcobb.com"],
+  ["Jake Schonberger", "https://jakeschonberger.com"],
 ]
 
+const projectChallenges: Record<IdentityPattern, string> = {
+  cmdk: "more intuitive human-computer interaction.",
+  basics: "keeping cultural knowledge alive.",
+  canopy: "more resilient living ecosystems.",
+}
+
+const defaultChallenge = "the planet's most pressing challenges."
+
 export default function Page() {
+  const [hoveredPattern, setHoveredPattern] = useState<IdentityPattern | null>(
+    null
+  )
+  const [focusedPattern, setFocusedPattern] = useState<IdentityPattern | null>(
+    null
+  )
+  const activePattern = focusedPattern ?? hoveredPattern
+  const activeChallenge = activePattern
+    ? projectChallenges[activePattern]
+    : defaultChallenge
+
+  const previewPattern = (pattern: IdentityPattern) => ({
+    onMouseEnter: () => setHoveredPattern(pattern),
+    onMouseLeave: () => setHoveredPattern(null),
+    onFocus: () => setFocusedPattern(pattern),
+    onBlur: () => setFocusedPattern(null),
+  })
+
   return (
     <main className="main">
       <div className="content">
-        <DipLogo />
-        <p className="tagline">Tools for interface excellence.</p>
+        <GeneralPurposeIdentity pattern={activePattern} resolution={24} />
+        <p className="tagline">
+          Frontier intelligence for{" "}
+          <span className="tagline-challenge" key={activePattern ?? "default"}>
+            {activeChallenge}
+          </span>
+        </p>
 
         <section className="section">
-          <h2 className="heading">Products</h2>
+          <h2 className="heading">Projects</h2>
           <ul className="product-list">
             <li className="product-item">
               <a
@@ -111,15 +94,32 @@ export default function Page() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="product-link"
+                {...previewPattern("cmdk")}
               >
                 <CmdkLogo />
               </a>
               <span className="badge">v1.1.1</span>
             </li>
             <li className="product-item">
-              <span className="product-logo">
+              <button
+                type="button"
+                className="product-link product-button"
+                aria-label="Preview Basics dot pattern"
+                {...previewPattern("basics")}
+              >
                 <BasicsLogo />
-              </span>
+              </button>
+              <span className="badge badge-soon">Coming Soon</span>
+            </li>
+            <li className="product-item">
+              <Link
+                href="/canopy"
+                className="product-link product-button product-name"
+                aria-label="Open interactive Canopy globe"
+                {...previewPattern("canopy")}
+              >
+                Canopy
+              </Link>
               <span className="badge badge-soon">Coming Soon</span>
             </li>
           </ul>
@@ -138,7 +138,9 @@ export default function Page() {
           </ul>
         </section>
 
-        <TimeGreeting />
+        <div className="time-greeting">
+          The future is here. It&apos;s just not evenly distributed
+        </div>
       </div>
     </main>
   )

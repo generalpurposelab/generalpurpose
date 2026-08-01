@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Dip",
+  title: "General Purpose",
   description: "Dip is a technology lab and holding company.",
 }
 
