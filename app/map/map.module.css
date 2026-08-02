@@ -396,15 +396,61 @@
   transform: translate(-50%, -50%);
 }
 
-.globeWrap > div:first-child {
+.globeVectorLayer,
+.globeCanvas {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
 }
 
+.globeVectorLayer {
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 24px 44px rgb(31 35 39 / 11%));
+  pointer-events: none;
+}
+
+.globeOcean {
+  fill: color-mix(in srgb, var(--atlas-solid) 78%, transparent);
+}
+
+.globeLand {
+  fill: color-mix(in srgb, var(--atlas-ink) 16%, var(--atlas-solid));
+  stroke: color-mix(in srgb, var(--atlas-ink) 20%, transparent);
+  stroke-width: 0.7;
+  stroke-linejoin: round;
+}
+
+.globeCountryHighlight {
+  fill: color-mix(in srgb, var(--multi-color) 27%, transparent);
+  stroke: color-mix(in srgb, var(--multi-color) 76%, var(--atlas-ink));
+  stroke-width: 1.35;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.globeGraticule {
+  fill: none;
+  stroke: color-mix(in srgb, var(--atlas-ink) 7%, transparent);
+  stroke-width: 0.55;
+}
+
+.globeBorders {
+  fill: none;
+  stroke: color-mix(in srgb, var(--atlas-solid) 60%, transparent);
+  stroke-width: 0.55;
+  vector-effect: non-scaling-stroke;
+}
+
+.globeOutline {
+  fill: none;
+  stroke: var(--atlas-rule-strong);
+  stroke-width: 1;
+}
+
 .globeCanvas {
   display: block;
-  width: 100%;
-  height: 100%;
   outline: 0;
   cursor: grab;
   touch-action: none;
@@ -415,9 +461,12 @@
 }
 
 .globeCanvas:focus-visible {
-  border-radius: 50%;
-  outline: 1px solid var(--atlas-rule-strong);
-  outline-offset: 5px;
+  outline: 0;
+}
+
+.globeWrap:has(.globeCanvas:focus-visible) .globeOutline {
+  stroke: var(--atlas-ink);
+  stroke-width: 2;
 }
 
 .globeLoading {
@@ -468,6 +517,10 @@
 .mapTooltip span {
   color: var(--atlas-muted);
   font-size: 9px;
+}
+
+.mapTooltip[data-kind="country"] {
+  min-width: 118px;
 }
 
 .mapStats {

@@ -1,6 +1,12 @@
 "use client"
 
-import type { Globe, Marker } from "cobe"
+import {
+  geoContains,
+  geoDistance,
+  geoGraticule10,
+  geoOrthographic,
+  geoPath,
+} from "d3-geo"
 import {
   useEffect,
   useMemo,
@@ -9,20 +15,31 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from "react"
+import { feature, mesh } from "topojson-client"
+import type {
+  GeometryCollection,
+  GeometryObject,
+  Objects,
+  Topology,
+} from "topojson-specification"
+import worldAtlas from "world-atlas/countries-110m.json"
 
-import { loadCobe } from "@/components/canopy-globe-loader"
 import { THEME_CHANGE_EVENT } from "@/components/theme-toggle"
 
 import type { AtlasLanguage, AtlasResource } from "./atlas-types"
 import styles from "./map.module.css"
 
-const INITIAL_PHI = 3.05
-const INITIAL_THETA = 0.08
-const SCALE = 1.08
-const MARKER_ELEVATION = 0.018
-const MARKER_RADIUS = 0.8 + MARKER_ELEVATION
+const VIEWBOX_SIZE = 720
+const GLOBE_RADIUS = VIEWBOX_SIZE * 0.432
+const INITIAL_CENTER = { latitude: 8, longitude: 18 }
+const HALF_PI = Math.PI / 2
 
 type Color = [number, number, number]
+
+interface WorldObjects extends Objects {
+  countries: GeometryCollection
+  land: GeometryCollection
+}
 
 interface LanguageGlobeProps {
   languages: AtlasLanguage[]
@@ -36,6 +53,33 @@ interface ProjectedPoint {
   y: number
   visible: boolean
 }
+
+interface PreparedLanguage {
+  language: AtlasLanguage
+  color: Color
+  size: number
+}
+
+interface HoveredCountry {
+  name: string
+  point: ProjectedPoint
+}
+
+const topology = worldAtlas as unknown as Topology<WorldObjects>
+const land = feature(topology, topology.objects.land)
+const countries = feature(topology, topology.objects.countries)
+const borders = mesh(
+  topology,
+  topology.objects.countries,
+  (a: GeometryObject, b: GeometryObject) => a !== b
+)
+const graticule = geoGraticule10()
+const projection = geoOrthographic()
+  .translate([VIEWBOX_SIZE / 2, VIEWBOX_SIZE / 2])
+  .scale(GLOBE_RADIUS)
+  .clipAngle(90)
+  .precision(0.35)
+const path = geoPath(projection)
 
 function languageDomains(language: AtlasLanguage, resources: AtlasResource[]) {
   const domains = new Set(
@@ -51,72 +95,43 @@ function languageDomains(language: AtlasLanguage, resources: AtlasResource[]) {
 function markerStyle(language: AtlasLanguage, resources: AtlasResource[]) {
   const domains = languageDomains(language, resources)
   if (domains.speech && domains.text && domains.translation) {
-    return { color: [0.16, 0.39, 0.95] as Color, size: 0.012 }
+    return { color: [0.16, 0.39, 0.95] as Color, size: 3.4 }
   }
-  if (domains.speech) return { color: [0.76, 0.22, 0.64] as Color, size: 0.009 }
+  if (domains.speech) return { color: [0.76, 0.22, 0.64] as Color, size: 2.8 }
   if (domains.translation) {
-    return { color: [0.96, 0.46, 0.16] as Color, size: 0.009 }
+    return { color: [0.96, 0.46, 0.16] as Color, size: 2.8 }
   }
-  if (domains.text) return { color: [0.14, 0.64, 0.43] as Color, size: 0.008 }
-  return { color: [0.49, 0.52, 0.55] as Color, size: 0.0035 }
+  if (domains.text) return { color: [0.14, 0.64, 0.43] as Color, size: 2.5 }
+  return { color: [0.49, 0.52, 0.55] as Color, size: 1.25 }
 }
 
-function locationVector(latitude: number, longitude: number) {
-  const lat = (latitude * Math.PI) / 180
-  const lon = (longitude * Math.PI) / 180 - Math.PI
-  const cosLat = Math.cos(lat)
-  return [-cosLat * Math.cos(lon), Math.sin(lat), cosLat * Math.sin(lon)]
+function cssColor(color: Color, alpha = 1) {
+  const [red, green, blue] = color.map((channel) => Math.round(channel * 255))
+  return `rgb(${red} ${green} ${blue} / ${alpha})`
+}
+
+function isVisible(
+  latitude: number,
+  longitude: number,
+  center: { latitude: number; longitude: number }
+) {
+  return (
+    geoDistance([longitude, latitude], [center.longitude, center.latitude]) <=
+    HALF_PI + 0.015
+  )
 }
 
 function projectLocation(
   language: AtlasLanguage,
-  phi: number,
-  theta: number,
-  width: number,
-  height: number
+  center: { latitude: number; longitude: number }
 ): ProjectedPoint | null {
   if (language.latitude === null || language.longitude === null) return null
-  const [rawX, rawY, rawZ] = locationVector(
-    language.latitude,
-    language.longitude
-  )
-  const x = rawX * MARKER_RADIUS
-  const y = rawY * MARKER_RADIUS
-  const z = rawZ * MARKER_RADIUS
-  const cosTheta = Math.cos(theta)
-  const cosPhi = Math.cos(phi)
-  const sinTheta = Math.sin(theta)
-  const sinPhi = Math.sin(phi)
-  const horizontal = cosPhi * x + sinPhi * z
-  const vertical = sinPhi * sinTheta * x + cosTheta * y - cosPhi * sinTheta * z
-  const depth = -sinPhi * cosTheta * x + sinTheta * y + cosPhi * cosTheta * z
-
+  const point = projection([language.longitude, language.latitude])
+  if (!point) return null
   return {
-    x: ((horizontal / (width / height)) * SCALE + 1) / 2,
-    y: (-vertical * SCALE + 1) / 2,
-    visible:
-      depth >= 0 || horizontal * horizontal + vertical * vertical >= 0.64,
-  }
-}
-
-function focusAngles(language: AtlasLanguage) {
-  if (language.latitude === null || language.longitude === null) return null
-  const [x, y, z] = locationVector(language.latitude, language.longitude)
-  const phi = Math.atan2(-x, z)
-  const theta = Math.atan2(y, Math.hypot(x, z))
-  return { phi, theta }
-}
-
-function isDarkTheme() {
-  return document.documentElement.dataset.theme === "dark"
-}
-
-function globeColors(dark: boolean) {
-  return {
-    dark: dark ? 1 : 0,
-    baseColor: (dark ? [0.34, 0.36, 0.39] : [0.95, 0.95, 0.92]) as Color,
-    glowColor: (dark ? [0.04, 0.05, 0.07] : [0.97, 0.97, 0.94]) as Color,
-    mapBrightness: dark ? 4.5 : 2.1,
+    x: point[0] / VIEWBOX_SIZE,
+    y: point[1] / VIEWBOX_SIZE,
+    visible: isVisible(language.latitude, language.longitude, center),
   }
 }
 
@@ -126,20 +141,27 @@ export function LanguageGlobe({
   selectedLanguage,
   onSelect,
 }: LanguageGlobeProps) {
+  const svgRef = useRef<SVGSVGElement>(null)
+  const landRef = useRef<SVGPathElement>(null)
+  const countryHighlightRef = useRef<SVGPathElement>(null)
+  const bordersRef = useRef<SVGPathElement>(null)
+  const graticuleRef = useRef<SVGPathElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const globeRef = useRef<Globe | null>(null)
-  const phiRef = useRef(INITIAL_PHI)
-  const thetaRef = useRef(INITIAL_THETA)
-  const sizeRef = useRef({ width: 720, height: 720 })
+  const centerRef = useRef(INITIAL_CENTER)
   const renderRef = useRef<(() => void) | null>(null)
   const languagesRef = useRef(languages)
+  const preparedRef = useRef<PreparedLanguage[]>([])
   const selectedRef = useRef(selectedLanguage)
+  const hoveredCountryFeatureRef = useRef<
+    (typeof countries.features)[number] | null
+  >(null)
+  const hoveringRef = useRef(false)
   const dragRef = useRef<{
     pointerId: number
     x: number
     y: number
-    phi: number
-    theta: number
+    latitude: number
+    longitude: number
     moved: boolean
   } | null>(null)
   const hoverFrameRef = useRef<number | null>(null)
@@ -148,70 +170,125 @@ export function LanguageGlobe({
     null
   )
   const [hoverPoint, setHoverPoint] = useState<ProjectedPoint | null>(null)
+  const [hoveredCountry, setHoveredCountry] = useState<HoveredCountry | null>(
+    null
+  )
 
-  const markers = useMemo<Marker[]>(
+  const preparedLanguages = useMemo<PreparedLanguage[]>(
     () =>
       languages.flatMap((language) => {
         if (language.latitude === null || language.longitude === null) return []
-        const appearance = markerStyle(language, resources)
-        const selected = selectedLanguage?.id === language.id
-        return [
-          {
-            location: [language.latitude, language.longitude],
-            color: selected ? ([0.04, 0.05, 0.08] as Color) : appearance.color,
-            size: selected ? 0.032 : appearance.size,
-          },
-        ]
+        return [{ language, ...markerStyle(language, resources) }]
       }),
-    [languages, resources, selectedLanguage]
+    [languages, resources]
   )
-  const markersRef = useRef(markers)
 
   useEffect(() => {
     languagesRef.current = languages
   }, [languages])
 
   useEffect(() => {
-    selectedRef.current = selectedLanguage
-    if (!selectedLanguage) return
-    const angles = focusAngles(selectedLanguage)
-    if (!angles) return
-    phiRef.current = angles.phi
-    thetaRef.current = angles.theta
+    preparedRef.current = preparedLanguages
     renderRef.current?.()
-  }, [selectedLanguage])
+  }, [preparedLanguages])
 
   useEffect(() => {
-    markersRef.current = markers
-    globeRef.current?.update({ markers })
+    selectedRef.current = selectedLanguage
+    if (
+      selectedLanguage &&
+      selectedLanguage.latitude !== null &&
+      selectedLanguage.longitude !== null
+    ) {
+      centerRef.current = {
+        latitude: selectedLanguage.latitude,
+        longitude: selectedLanguage.longitude,
+      }
+    }
     renderRef.current?.()
-  }, [markers])
+  }, [selectedLanguage])
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
     const devicePixelRatio = Math.min(window.devicePixelRatio || 1, 2)
+    const context = canvas.getContext("2d")
+    if (!context) return
+    canvas.width = VIEWBOX_SIZE * devicePixelRatio
+    canvas.height = VIEWBOX_SIZE * devicePixelRatio
+    context.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0)
+
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches
-    let disposed = false
     let animationFrame: number | null = null
+    let disposed = false
+    let lastFrame = 0
     let visible = true
 
     const render = () => {
-      globeRef.current?.update({
-        phi: phiRef.current,
-        theta: thetaRef.current,
-      })
+      const center = centerRef.current
+      projection.rotate([-center.longitude, -center.latitude, 0])
+
+      landRef.current?.setAttribute("d", path(land) ?? "")
+      countryHighlightRef.current?.setAttribute(
+        "d",
+        hoveredCountryFeatureRef.current
+          ? (path(hoveredCountryFeatureRef.current) ?? "")
+          : ""
+      )
+      bordersRef.current?.setAttribute("d", path(borders) ?? "")
+      graticuleRef.current?.setAttribute("d", path(graticule) ?? "")
+
+      context.clearRect(0, 0, VIEWBOX_SIZE, VIEWBOX_SIZE)
+      const selectedId = selectedRef.current?.id
+
+      for (const item of preparedRef.current) {
+        const { language } = item
+        if (
+          language.latitude === null ||
+          language.longitude === null ||
+          !isVisible(language.latitude, language.longitude, center)
+        ) {
+          continue
+        }
+        const point = projection([language.longitude, language.latitude])
+        if (!point) continue
+        const selected = language.id === selectedId
+        const radius = selected ? 6.8 : item.size
+
+        context.beginPath()
+        context.arc(point[0], point[1], radius, 0, Math.PI * 2)
+        context.fillStyle = selected
+          ? isDarkTheme()
+            ? "#f5f3ec"
+            : "#17191c"
+          : cssColor(item.color, item.size < 2 ? 0.72 : 0.9)
+        context.fill()
+        if (selected) {
+          context.lineWidth = 2
+          context.strokeStyle = isDarkTheme() ? "#17191c" : "#faf9f5"
+          context.stroke()
+        }
+      }
     }
     renderRef.current = render
+    render()
 
-    const animate = () => {
+    const animate = (time: number) => {
       animationFrame = null
-      if (!dragRef.current && !selectedRef.current) phiRef.current += 0.0015
-      render()
-      if (visible) animationFrame = window.requestAnimationFrame(animate)
+      if (disposed || !visible) return
+      if (time - lastFrame >= 30) {
+        lastFrame = time
+        if (!dragRef.current && !selectedRef.current && !hoveringRef.current) {
+          centerRef.current = {
+            ...centerRef.current,
+            longitude: centerRef.current.longitude - 0.055,
+          }
+        }
+        render()
+      }
+      animationFrame = window.requestAnimationFrame(animate)
     }
 
     const start = () => {
@@ -226,15 +303,6 @@ export function LanguageGlobe({
       animationFrame = null
     }
 
-    const resizeObserver = new ResizeObserver(([entry]) => {
-      const width = Math.max(1, Math.round(entry.contentRect.width))
-      const height = Math.max(1, Math.round(entry.contentRect.height))
-      sizeRef.current = { width, height }
-      globeRef.current?.update({ width, height })
-      render()
-    })
-    resizeObserver.observe(canvas)
-
     const intersectionObserver = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting
       if (visible) {
@@ -244,54 +312,18 @@ export function LanguageGlobe({
         stop()
       }
     })
-    intersectionObserver.observe(canvas)
+    if (svgRef.current) intersectionObserver.observe(svgRef.current)
 
-    const initialize = async () => {
-      const { default: createGlobe } = await loadCobe()
-      if (disposed) return
-      const bounds = canvas.getBoundingClientRect()
-      const width = Math.max(1, Math.round(bounds.width || 720))
-      const height = Math.max(1, Math.round(bounds.height || 720))
-      sizeRef.current = { width, height }
-      globeRef.current = createGlobe(canvas, {
-        devicePixelRatio,
-        width,
-        height,
-        phi: phiRef.current,
-        theta: thetaRef.current,
-        diffuse: 2.8,
-        mapSamples: width < 520 ? 12_000 : 22_000,
-        mapBaseBrightness: 0,
-        markerColor: [0.45, 0.48, 0.52],
-        markerElevation: MARKER_ELEVATION,
-        markers: markersRef.current,
-        opacity: 0.96,
-        scale: SCALE,
-        ...globeColors(isDarkTheme()),
-      })
-      render()
-      start()
-    }
-
-    const handleThemeChange = () => {
-      globeRef.current?.update(globeColors(isDarkTheme()))
-      render()
-    }
+    const handleThemeChange = () => render()
     window.addEventListener(THEME_CHANGE_EVENT, handleThemeChange)
-
-    void initialize().catch((error: unknown) => {
-      if (!disposed) console.error("Unable to initialize language globe", error)
-    })
+    start()
 
     return () => {
       disposed = true
       renderRef.current = null
       window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange)
-      resizeObserver.disconnect()
       intersectionObserver.disconnect()
       stop()
-      globeRef.current?.destroy()
-      globeRef.current = null
     }
   }, [])
 
@@ -299,8 +331,8 @@ export function LanguageGlobe({
     const canvas = canvasRef.current
     if (!canvas) return null
     const bounds = canvas.getBoundingClientRect()
-    const localX = clientX - bounds.left
-    const localY = clientY - bounds.top
+    const localX = ((clientX - bounds.left) / bounds.width) * VIEWBOX_SIZE
+    const localY = ((clientY - bounds.top) / bounds.height) * VIEWBOX_SIZE
     let nearest: {
       language: AtlasLanguage
       point: ProjectedPoint
@@ -308,22 +340,49 @@ export function LanguageGlobe({
     } | null = null
 
     for (const language of languagesRef.current) {
-      const point = projectLocation(
-        language,
-        phiRef.current,
-        thetaRef.current,
-        bounds.width,
-        bounds.height
-      )
+      const point = projectLocation(language, centerRef.current)
       if (!point?.visible) continue
-      const dx = point.x * bounds.width - localX
-      const dy = point.y * bounds.height - localY
+      const dx = point.x * VIEWBOX_SIZE - localX
+      const dy = point.y * VIEWBOX_SIZE - localY
       const distance = Math.hypot(dx, dy)
-      if (distance <= 13 && (!nearest || distance < nearest.distance)) {
+      const hitRadius = (13 / bounds.width) * VIEWBOX_SIZE
+      if (distance <= hitRadius && (!nearest || distance < nearest.distance)) {
         nearest = { language, point, distance }
       }
     }
     return nearest
+  }
+
+  const findCountry = (clientX: number, clientY: number) => {
+    const canvas = canvasRef.current
+    if (!canvas) return null
+    const bounds = canvas.getBoundingClientRect()
+    const localX = ((clientX - bounds.left) / bounds.width) * VIEWBOX_SIZE
+    const localY = ((clientY - bounds.top) / bounds.height) * VIEWBOX_SIZE
+    const distanceFromCenter = Math.hypot(
+      localX - VIEWBOX_SIZE / 2,
+      localY - VIEWBOX_SIZE / 2
+    )
+    if (distanceFromCenter > GLOBE_RADIUS) return null
+
+    const location = projection.invert?.([localX, localY])
+    if (!location) return null
+
+    for (const country of countries.features) {
+      const name = (country.properties as { name?: unknown } | null)?.name
+      if (typeof name === "string" && geoContains(country, location)) {
+        return {
+          feature: country,
+          name,
+          point: {
+            x: localX / VIEWBOX_SIZE,
+            y: localY / VIEWBOX_SIZE,
+            visible: true,
+          },
+        }
+      }
+    }
+    return null
   }
 
   const scheduleHover = (clientX: number, clientY: number) => {
@@ -336,6 +395,19 @@ export function LanguageGlobe({
       const nearest = findNearestLanguage(pointer.x, pointer.y)
       setHoveredLanguage(nearest?.language ?? null)
       setHoverPoint(nearest?.point ?? null)
+      if (nearest) {
+        hoveringRef.current = true
+        hoveredCountryFeatureRef.current = null
+        setHoveredCountry(null)
+      } else {
+        const country = findCountry(pointer.x, pointer.y)
+        hoveringRef.current = Boolean(country)
+        hoveredCountryFeatureRef.current = country?.feature ?? null
+        setHoveredCountry(
+          country ? { name: country.name, point: country.point } : null
+        )
+      }
+      renderRef.current?.()
     })
   }
 
@@ -344,11 +416,16 @@ export function LanguageGlobe({
       pointerId: event.pointerId,
       x: event.clientX,
       y: event.clientY,
-      phi: phiRef.current,
-      theta: thetaRef.current,
+      latitude: centerRef.current.latitude,
+      longitude: centerRef.current.longitude,
       moved: false,
     }
+    hoveringRef.current = false
+    hoveredCountryFeatureRef.current = null
     setHoveredLanguage(null)
+    setHoverPoint(null)
+    setHoveredCountry(null)
+    renderRef.current?.()
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
@@ -358,11 +435,17 @@ export function LanguageGlobe({
       scheduleHover(event.clientX, event.clientY)
       return
     }
+    const bounds = event.currentTarget.getBoundingClientRect()
     const dx = event.clientX - drag.x
     const dy = event.clientY - drag.y
     if (Math.hypot(dx, dy) > 4) drag.moved = true
-    phiRef.current = drag.phi + dx / 170
-    thetaRef.current = Math.max(-1.2, Math.min(1.2, drag.theta + dy / 310))
+    centerRef.current = {
+      longitude: drag.longitude - (dx / bounds.width) * 190,
+      latitude: Math.max(
+        -80,
+        Math.min(80, drag.latitude + (dy / bounds.height) * 130)
+      ),
+    }
     renderRef.current?.()
   }
 
@@ -381,39 +464,71 @@ export function LanguageGlobe({
 
   const handleKeyDown = (event: KeyboardEvent<HTMLCanvasElement>) => {
     const adjustments: Partial<Record<string, [number, number]>> = {
-      ArrowLeft: [-0.13, 0],
-      ArrowRight: [0.13, 0],
-      ArrowUp: [0, -0.1],
-      ArrowDown: [0, 0.1],
+      ArrowLeft: [-10, 0],
+      ArrowRight: [10, 0],
+      ArrowUp: [0, 8],
+      ArrowDown: [0, -8],
     }
     const adjustment = adjustments[event.key]
     if (!adjustment) return
     event.preventDefault()
     onSelect(null)
-    phiRef.current += adjustment[0]
-    thetaRef.current = Math.max(
-      -1.2,
-      Math.min(1.2, thetaRef.current + adjustment[1])
-    )
+    centerRef.current = {
+      longitude: centerRef.current.longitude + adjustment[0],
+      latitude: Math.max(
+        -80,
+        Math.min(80, centerRef.current.latitude + adjustment[1])
+      ),
+    }
     renderRef.current?.()
   }
 
   return (
     <div className={styles.globeWrap}>
+      <svg
+        ref={svgRef}
+        className={styles.globeVectorLayer}
+        viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
+        aria-hidden="true"
+      >
+        <circle
+          className={styles.globeOcean}
+          cx={VIEWBOX_SIZE / 2}
+          cy={VIEWBOX_SIZE / 2}
+          r={GLOBE_RADIUS}
+        />
+        <path ref={graticuleRef} className={styles.globeGraticule} />
+        <path ref={landRef} className={styles.globeLand} />
+        <path
+          ref={countryHighlightRef}
+          className={styles.globeCountryHighlight}
+        />
+        <path ref={bordersRef} className={styles.globeBorders} />
+        <circle
+          className={styles.globeOutline}
+          cx={VIEWBOX_SIZE / 2}
+          cy={VIEWBOX_SIZE / 2}
+          r={GLOBE_RADIUS}
+        />
+      </svg>
       <canvas
         ref={canvasRef}
         className={styles.globeCanvas}
-        width={720}
-        height={720}
+        width={VIEWBOX_SIZE}
+        height={VIEWBOX_SIZE}
         role="img"
         tabIndex={0}
-        aria-label="Interactive globe of world languages. Drag or use arrow keys to rotate; select a point for language details."
+        aria-label="Interactive vector globe of world languages. Drag or use arrow keys to rotate; hover a country for its name; select a language location for details."
         onKeyDown={handleKeyDown}
         onPointerCancel={handlePointerEnd}
         onPointerDown={handlePointerDown}
         onPointerLeave={() => {
+          hoveringRef.current = false
+          hoveredCountryFeatureRef.current = null
           setHoveredLanguage(null)
           setHoverPoint(null)
+          setHoveredCountry(null)
+          renderRef.current?.()
         }}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}
@@ -433,8 +548,26 @@ export function LanguageGlobe({
               : "Coverage not yet observed"}
           </span>
         </div>
+      ) : hoveredCountry ? (
+        <div
+          className={styles.mapTooltip}
+          data-kind="country"
+          style={{
+            left: `${hoveredCountry.point.x * 100}%`,
+            top: `${hoveredCountry.point.y * 100}%`,
+          }}
+        >
+          <strong>{hoveredCountry.name}</strong>
+          <span>Country boundary · Natural Earth</span>
+        </div>
       ) : null}
-      <div className={styles.globeHint}>Drag to rotate · select a point</div>
+      <div className={styles.globeHint}>
+        Drag to rotate · hover countries · select a language
+      </div>
     </div>
   )
+}
+
+function isDarkTheme() {
+  return document.documentElement.dataset.theme === "dark"
 }
