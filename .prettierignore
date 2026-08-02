@@ -6,3 +6,4 @@ coverage/
 pnpm-lock.yaml
 .pnpm-store/
 components/identity-portrait-scales.generated.ts
+public/data/language-atlas.json
