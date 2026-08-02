@@ -2,7 +2,6 @@ import type { ReactNode } from "react"
 
 import { ArticleMinimap } from "@/components/article-minimap"
 import { BackLink } from "@/components/back-link"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { dipFontVariables } from "@/lib/dip-fonts"
 import type { WritingMetadata, WritingSection } from "@/lib/writing"
 
@@ -25,7 +24,6 @@ export function WritingArticleLayout({
 }) {
   return (
     <div className={`dip-page dip-page--interview ${dipFontVariables}`}>
-      <ThemeToggle />
       <aside className="dip-aside">
         <BackLink label="Home" />
         <div className="dip-toc">

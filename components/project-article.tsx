@@ -3,7 +3,6 @@ import { Fragment, type ReactNode } from "react"
 import { ArticleMinimap } from "@/components/article-minimap"
 import { BackLink } from "@/components/back-link"
 import { CanopyGlobe } from "@/components/canopy-globe"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { ArticleImage } from "@/components/writing/article-media"
 import type { ProjectPost } from "@/content/projects"
 import { dipFontVariables } from "@/lib/dip-fonts"
@@ -77,7 +76,6 @@ function ProjectMediaSlot({
 export function ProjectArticle({ project }: { project: ProjectPost }) {
   return (
     <div className={`dip-page dip-page--${project.slug} ${dipFontVariables}`}>
-      <ThemeToggle />
       <aside className="dip-aside">
         <BackLink label="Home" />
         <div className="dip-toc">

@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { Fragment } from "react"
 
 import { BackLink } from "@/components/back-link"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { dipFontVariables } from "@/lib/dip-fonts"
 
 const ABOUT_DESCRIPTION =
@@ -61,7 +60,6 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <div className={`dip-page ${dipFontVariables}`}>
-      <ThemeToggle />
       <aside className="dip-aside">
         <BackLink label="Home" />
       </aside>

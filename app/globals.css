@@ -333,6 +333,15 @@ body {
   border-radius: 50%;
 }
 
+/* The labels track globe markers via CSS anchor positioning; browsers
+   without it (older Safari) would pile them into a corner, so hide them
+   there and leave the globe itself interactive. */
+@supports not (bottom: anchor(top)) {
+  .canopy-language-label {
+    display: none;
+  }
+}
+
 .canopy-language-label {
   --canopy-label-color: #0648ff;
   --canopy-label-shadow: rgba(6, 72, 255, 0.22);
@@ -637,7 +646,10 @@ body {
   text-decoration: none;
 }
 
-.writing-row {
+/* Anchor the stretched link to the cell, not the row: Safari ignores
+   position: relative on table rows, which would let the overlay cover
+   the whole page instead. */
+.writing-title {
   position: relative;
 }
 

@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 
 import { BackLink } from "@/components/back-link"
 import { JoinForm } from "@/components/join-form"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { dipFontVariables } from "@/lib/dip-fonts"
 
 export const metadata: Metadata = {
@@ -22,7 +21,6 @@ export const metadata: Metadata = {
 export default function JoinPage() {
   return (
     <div className={`dip-page dip-page--join ${dipFontVariables}`}>
-      <ThemeToggle />
       <aside className="dip-aside">
         <BackLink label="Home" />
       </aside>

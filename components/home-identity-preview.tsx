@@ -23,8 +23,7 @@ import {
   DEFAULT_PAGE_POINTER_WAKE_SETTINGS,
   PagePointerWake,
 } from "@/components/page-pointer-wake"
-// import { ThemeToggle } from "@/components/theme-toggle"
-
+//
 type ChallengeByPattern = Readonly<Partial<Record<IdentityPattern, string>>>
 
 const DEFAULT_CHALLENGE = "some of the planet's most pressing challenges."

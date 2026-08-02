@@ -38,7 +38,8 @@ export const metadata: Metadata = {
   },
 }
 
-const themeInitScript = `try{var t=localStorage.getItem("general-purpose-home-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}`
+// Dark mode follows the system preference; there is no manual toggle.
+const themeInitScript = `try{var q=matchMedia("(prefers-color-scheme: dark)");var s=function(){document.documentElement.dataset.theme=q.matches?"dark":"light";window.dispatchEvent(new Event("general-purpose-theme-change"))};s();q.addEventListener("change",s)}catch(e){}`
 
 export default function RootLayout({
   children,

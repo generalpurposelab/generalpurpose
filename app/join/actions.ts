@@ -12,6 +12,12 @@ function isPlausibleEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
+// A leading = + - or @ would make Sheets evaluate the cell as a formula;
+// the apostrophe prefix forces plain text.
+function sheetSafe(value: string) {
+  return /^[=+\-@]/.test(value) ? `'${value}` : value
+}
+
 export async function submitJoinRequest(
   _previousState: JoinFormState,
   formData: FormData
@@ -54,7 +60,12 @@ export async function submitJoinRequest(
       // text/plain keeps Apps Script from mangling the body; it still
       // arrives as e.postData.contents.
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ name, email, message, secret: webhookSecret }),
+      body: JSON.stringify({
+        name: sheetSafe(name),
+        email: sheetSafe(email),
+        message: sheetSafe(message),
+        secret: webhookSecret,
+      }),
     })
     const body = await response.text()
 

@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 
 import { BackLink } from "@/components/back-link"
-import { ThemeToggle } from "@/components/theme-toggle"
 
 export const metadata: Metadata = {
   title: "Page not found",
@@ -11,7 +10,6 @@ export const metadata: Metadata = {
 export default function NotFound() {
   return (
     <div className="dip-page">
-      <ThemeToggle />
       <aside className="dip-aside">
         <BackLink label="Home" />
       </aside>
