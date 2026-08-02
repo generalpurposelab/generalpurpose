@@ -1,23 +1,27 @@
 "use client"
 
-import type { FormEvent } from "react"
+import { useActionState } from "react"
+
+import { submitJoinRequest, type JoinFormState } from "@/app/join/actions"
+
+const INITIAL_STATE: JoinFormState = { status: "idle" }
 
 export function JoinForm() {
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const [state, formAction, isPending] = useActionState(
+    submitJoinRequest,
+    INITIAL_STATE
+  )
 
-    const form = new FormData(event.currentTarget)
-    const name = String(form.get("name") ?? "")
-    const email = String(form.get("email") ?? "")
-    const message = String(form.get("message") ?? "")
-    const subject = `Joining General Purpose — ${name}`
-    const body = [`Name: ${name}`, `Email: ${email}`, "", message].join("\n")
-
-    window.location.href = `mailto:hello@general-purpose.io?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  if (state.status === "success") {
+    return (
+      <p className="join-confirmation" role="status">
+        Thanks — you&apos;re on the list. We&apos;ll be in touch.
+      </p>
+    )
   }
 
   return (
-    <form className="join-form" onSubmit={handleSubmit}>
+    <form className="join-form" action={formAction}>
       <div className="join-field">
         <label htmlFor="join-name">Name</label>
         <input
@@ -53,8 +57,25 @@ export function JoinForm() {
         />
       </div>
 
-      <button className="join-submit" type="submit">
-        Join us
+      <div className="join-honeypot" aria-hidden="true">
+        <label htmlFor="join-website">Website</label>
+        <input
+          id="join-website"
+          name="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+        />
+      </div>
+
+      {state.status === "error" ? (
+        <p className="join-error" role="alert">
+          {state.message}
+        </p>
+      ) : null}
+
+      <button className="join-submit" type="submit" disabled={isPending}>
+        {isPending ? "Joining…" : "Join us"}
       </button>
     </form>
   )

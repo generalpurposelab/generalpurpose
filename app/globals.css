@@ -995,6 +995,33 @@ body:has(.dip-page) {
   color: #fff;
 }
 
+.join-submit:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.join-honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.join-confirmation {
+  margin-top: 2.5rem;
+  color: #111;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  letter-spacing: -0.00563rem;
+}
+
+.join-error {
+  color: #b54932;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
 .dip-article dl,
 .dip-article li,
 .dip-article p {
@@ -1602,4 +1629,12 @@ body:has(.dip-page) {
   border-color: #ededed;
   background: #ededed;
   color: #111;
+}
+
+:root[data-theme="dark"] .join-confirmation {
+  color: #ededed;
+}
+
+:root[data-theme="dark"] .join-error {
+  color: #d97a63;
 }
