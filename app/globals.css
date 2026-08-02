@@ -333,23 +333,14 @@ body {
   border-radius: 50%;
 }
 
-/* The labels track globe markers via CSS anchor positioning; browsers
-   without it (older Safari) would pile them into a corner, so hide them
-   there and leave the globe itself interactive. */
-@supports not (bottom: anchor(top)) {
-  .canopy-language-label {
-    display: none;
-  }
-}
-
+/* Label left/top are mirrored from cobe's marker anchor divs in JS
+   (CanopyGlobe), which works in browsers without CSS anchor positioning. */
 .canopy-language-label {
   --canopy-label-color: #0648ff;
   --canopy-label-shadow: rgba(6, 72, 255, 0.22);
   appearance: none;
   position: absolute;
   z-index: 2;
-  bottom: anchor(top);
-  left: anchor(center);
   display: grid;
   gap: 0;
   padding: 4px 7px;
@@ -366,7 +357,7 @@ body {
   white-space: nowrap;
   pointer-events: auto;
   filter: blur(calc((1 - var(--language-visible, 0)) * 6px));
-  transform: translate(-50%, -8px);
+  transform: translate(-50%, calc(-100% - 8px));
   transition:
     opacity 180ms,
     filter 180ms,

@@ -153,7 +153,6 @@ const LANGUAGE_RELATIONSHIPS = [
 
 type MarkerLabelStyle = CSSProperties & {
   "--language-visible": string
-  positionAnchor: string
 }
 
 function globeThemeOptions(dark: boolean) {
@@ -194,6 +193,7 @@ export function CanopyGlobe() {
     null
   )
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const labelsRef = useRef<HTMLDivElement>(null)
   const renderGlobeRef = useRef<(() => void) | null>(null)
   const updateRelationshipsRef = useRef<
     ((languageId: string | null) => void) | null
@@ -222,6 +222,43 @@ export function CanopyGlobe() {
     let globe: Globe | null = null
     let animationFrame: number | null = null
     let isVisible = true
+    let labelObserver: MutationObserver | null = null
+
+    // cobe tracks each marker with a 1px anchor div whose left/top it updates
+    // every frame. CSS anchor positioning could follow those for free, but
+    // Safari support is recent, so mirror the coordinates onto the labels.
+    const markerAnchors = new Map<string, HTMLElement>()
+    const markerLabels = new Map<string, HTMLElement>()
+
+    const syncLabelPositions = () => {
+      const cobeWrapper = canvas.parentElement
+      const labelsContainer = labelsRef.current
+      if (!cobeWrapper || !labelsContainer) return
+
+      for (const { id } of ATLAS_LANGUAGES) {
+        let anchor = markerAnchors.get(id)
+        if (!anchor?.isConnected) {
+          anchor =
+            cobeWrapper.querySelector<HTMLElement>(`[style*="--cobe-${id}"]`) ??
+            undefined
+          if (anchor) markerAnchors.set(id, anchor)
+        }
+
+        let label = markerLabels.get(id)
+        if (!label?.isConnected) {
+          label =
+            labelsContainer.querySelector<HTMLElement>(
+              `[data-language-id="${id}"]`
+            ) ?? undefined
+          if (label) markerLabels.set(id, label)
+        }
+
+        if (anchor && label) {
+          label.style.left = anchor.style.left
+          label.style.top = anchor.style.top
+        }
+      }
+    }
 
     const renderGlobe = () => {
       globe?.update({
@@ -316,9 +353,20 @@ export function CanopyGlobe() {
           })),
         })
       }
+      const cobeWrapper = canvas.parentElement
+      if (cobeWrapper) {
+        labelObserver = new MutationObserver(syncLabelPositions)
+        labelObserver.observe(cobeWrapper, {
+          attributes: true,
+          attributeFilter: ["style"],
+          subtree: true,
+        })
+      }
+
       renderGlobeRef.current = renderGlobe
       updateRelationshipsRef.current(selectedLanguageRef.current)
       renderGlobe()
+      syncLabelPositions()
       startAnimation()
     }
 
@@ -337,6 +385,7 @@ export function CanopyGlobe() {
       renderGlobeRef.current = null
       updateRelationshipsRef.current = null
       window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange)
+      labelObserver?.disconnect()
       resizeObserver.disconnect()
       intersectionObserver.disconnect()
       stopAnimation()
@@ -427,7 +476,7 @@ export function CanopyGlobe() {
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
       />
-      <div className="canopy-language-labels">
+      <div className="canopy-language-labels" ref={labelsRef}>
         {ATLAS_LANGUAGES.map((language) => {
           const {
             benchmark,
@@ -447,7 +496,6 @@ export function CanopyGlobe() {
             : "No benchmark yet"
           const style: MarkerLabelStyle = {
             "--language-visible": visibility,
-            positionAnchor: `--cobe-${id}`,
             opacity: visibility,
           }
 
@@ -457,6 +505,7 @@ export function CanopyGlobe() {
               aria-label={`${name}, ${benchmarkSummary.toLowerCase()}`}
               className="canopy-language-label"
               data-expanded={isSelected}
+              data-language-id={id}
               data-status={benchmark ? "benchmarked" : "needed"}
               key={id}
               onClick={() => selectLanguage(isSelected ? null : id)}
