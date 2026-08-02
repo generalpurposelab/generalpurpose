@@ -106,7 +106,7 @@ body {
 .identity {
   position: relative;
   width: 112px;
-  height: 112px;
+  height: 162.4px;
   margin-bottom: 24px;
   color: var(--home-muted);
 }
@@ -114,7 +114,7 @@ body {
 .identity-grid {
   position: absolute;
   top: 3.73px;
-  left: 0;
+  left: 3.78px;
   display: grid;
   grid-template-columns: repeat(
     var(--identity-grid-columns),
@@ -143,6 +143,20 @@ body {
 
 .identity--active .identity-dot {
   transform: scale(var(--dot-scale));
+}
+
+.identity-wordmark {
+  position: absolute;
+  top: 122.52px;
+  left: 7.29px;
+  display: block;
+  width: 97.33px;
+  height: 32.56px;
+  background: currentcolor;
+  pointer-events: none;
+  -webkit-mask: url("/assets/general-purpose-wordmark.svg") center / contain
+    no-repeat;
+  mask: url("/assets/general-purpose-wordmark.svg") center / contain no-repeat;
 }
 
 .pointer-wake-tuner {
@@ -479,19 +493,6 @@ body {
   margin-bottom: 24px;
 }
 
-.tagline-name {
-  color: inherit;
-  font-weight: 500;
-  text-decoration: none;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
-}
-
-.tagline-name:hover,
-.tagline-name:focus-visible {
-  text-decoration-line: underline;
-}
-
 .tagline-challenge {
   display: inline-grid;
   vertical-align: baseline;
@@ -571,13 +572,16 @@ body {
   margin-bottom: 40px;
 }
 
+.tools-section {
+  margin-top: 40px;
+}
+
 .writing-table {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
 }
 
-.writing-table th,
 .writing-table td {
   padding: 11px 0;
   border-bottom: 1px solid var(--home-rule);
@@ -588,17 +592,7 @@ body {
   vertical-align: top;
 }
 
-.writing-table th {
-  width: 15%;
-  color: var(--home-muted);
-  text-align: left;
-}
-
 .writing-table tbody:last-child tr:last-child > * {
-  border-bottom: 0;
-}
-
-.writing-table tbody:last-child th {
   border-bottom: 0;
 }
 
@@ -625,7 +619,7 @@ body {
 }
 
 .writing-table .writing-date {
-  width: 76px;
+  width: 88px;
   color: var(--home-muted);
   font-variant-numeric: tabular-nums;
   text-align: right;

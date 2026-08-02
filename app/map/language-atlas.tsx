@@ -11,6 +11,8 @@ import {
   type ReactNode,
 } from "react"
 
+import { GeneralPurposeIdentity } from "@/components/general-purpose-identity"
+
 import type {
   AtlasData,
   AtlasDomain,
@@ -24,7 +26,7 @@ const LanguageGlobe = dynamic(
   () => import("./language-globe").then((module) => module.LanguageGlobe),
   {
     loading: () => (
-      <div className={styles.globeLoading}>Drawing the atlas…</div>
+      <div className={styles.globeLoading}>Drawing Glottomap…</div>
     ),
   }
 )
@@ -334,7 +336,7 @@ function AtlasDrawer({
     <aside
       className={styles.drawer}
       aria-label={
-        mode === "methodology" ? "Atlas methodology" : "Resource index"
+        mode === "methodology" ? "Glottomap methodology" : "Resource index"
       }
     >
       <button
@@ -436,7 +438,7 @@ export function LanguageAtlas() {
     void fetch("/data/language-atlas.json", { signal: controller.signal })
       .then((response) => {
         if (!response.ok)
-          throw new Error(`Atlas data returned ${response.status}`)
+          throw new Error(`Glottomap data returned ${response.status}`)
         return response.json() as Promise<AtlasData>
       })
       .then(setData)
@@ -444,7 +446,7 @@ export function LanguageAtlas() {
         if (reason instanceof DOMException && reason.name === "AbortError")
           return
         setError(
-          reason instanceof Error ? reason.message : "Unable to load the atlas"
+          reason instanceof Error ? reason.message : "Unable to load Glottomap"
         )
       })
     return () => controller.abort()
@@ -506,8 +508,8 @@ export function LanguageAtlas() {
   if (error) {
     return (
       <main className={styles.errorState}>
-        <span>Language atlas</span>
-        <h1>The atlas data could not be loaded.</h1>
+        <span>Glottomap</span>
+        <h1>Glottomap data could not be loaded.</h1>
         <p>{error}</p>
         <button type="button" onClick={() => window.location.reload()}>
           Try again
@@ -535,22 +537,149 @@ export function LanguageAtlas() {
 
   return (
     <main className={styles.atlas} data-view={view}>
+      <h1 className={styles.srOnly}>Glottomap</h1>
       <header className={styles.header}>
-        <div className={styles.brandBlock}>
-          <Link
-            href="/"
-            className={styles.wordmark}
-            aria-label="General Purpose home"
+        <Link
+          href="/"
+          className={styles.brandIdentity}
+          aria-label="General Purpose home"
+        >
+          <GeneralPurposeIdentity pattern="canopy" resolution={24} />
+        </Link>
+
+        <div className={styles.headerCenter}>
+          <div
+            className={styles.controls}
+            role="region"
+            aria-label="Language filters"
           >
-            GP
-          </Link>
-          <div>
-            <span>Uhura language atlas</span>
-            <small>Global language technology coverage</small>
+            <label className={styles.macroareaSelect}>
+              <span className={styles.srOnly}>Macroarea</span>
+              <select
+                value={macroarea}
+                onChange={(event) => {
+                  setMacroarea(event.target.value)
+                  setPage(1)
+                }}
+              >
+                <option value="all">All regions</option>
+                {macroareas.map((area) => (
+                  <option key={area}>{area}</option>
+                ))}
+              </select>
+            </label>
+
+            <div
+              className={styles.searchWrap}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) {
+                  setSearchFocused(false)
+                }
+              }}
+            >
+              <SearchIcon />
+              <input
+                ref={searchInputRef}
+                aria-label="Search languages"
+                placeholder="Search language, ISO code, family…"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value)
+                  setPage(1)
+                }}
+                onFocus={() => setSearchFocused(true)}
+              />
+              {query ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("")
+                    setPage(1)
+                  }}
+                  aria-label="Clear search"
+                >
+                  <CloseIcon />
+                </button>
+              ) : null}
+              {searchFocused && query.trim() ? (
+                <div className={styles.searchResults}>
+                  {searchResults.length ? (
+                    searchResults.map((language) => (
+                      <button
+                        type="button"
+                        key={language.id}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onPointerDown={(event) => event.preventDefault()}
+                        onClick={() => {
+                          setSelectedLanguage(language)
+                          setSearchFocused(false)
+                          setView("map")
+                        }}
+                      >
+                        <span>
+                          <strong>{language.name}</strong>
+                          <small>
+                            {language.family} · {language.macroarea}
+                          </small>
+                        </span>
+                        <code>{language.iso ?? language.id}</code>
+                      </button>
+                    ))
+                  ) : (
+                    <p>No language matches this search.</p>
+                  )}
+                </div>
+              ) : null}
+            </div>
+
+            <div className={styles.filterRow}>
+              {FILTERS.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  data-filter={item.id}
+                  data-active={filter === item.id}
+                  onClick={() => {
+                    setFilter(item.id)
+                    setPage(1)
+                  }}
+                >
+                  {item.id !== "all" ? (
+                    <DomainDot domain={item.id === "gaps" ? "gap" : item.id} />
+                  ) : null}
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            {/*
+            <div className={styles.mobileLinks}>
+              <button type="button" onClick={() => setDrawer("resources")}>
+                Resources
+              </button>
+              <button type="button" onClick={() => setDrawer("methodology")}>
+                Methods
+              </button>
+            </div>
+            */}
           </div>
+
+          {/*
+          <nav
+            className={styles.headerLinks}
+            aria-label="Glottomap information"
+          >
+            <button type="button" onClick={() => setDrawer("resources")}>
+              {data.resources.length} datasets and evaluations
+            </button>
+            <button type="button" onClick={() => setDrawer("methodology")}>
+              Methodology
+            </button>
+          </nav>
+          */}
         </div>
 
-        <div className={styles.viewToggle} aria-label="Atlas view">
+        <div className={styles.viewToggle} aria-label="Glottomap view">
           <button
             type="button"
             data-active={view === "map"}
@@ -566,127 +695,7 @@ export function LanguageAtlas() {
             Table
           </button>
         </div>
-
-        <nav className={styles.headerLinks} aria-label="Atlas information">
-          <button type="button" onClick={() => setDrawer("resources")}>
-            {data.resources.length} resources
-          </button>
-          <button type="button" onClick={() => setDrawer("methodology")}>
-            Methodology
-          </button>
-        </nav>
       </header>
-
-      <section className={styles.controls} aria-label="Language filters">
-        <div
-          className={styles.searchWrap}
-          onBlur={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget)) {
-              setSearchFocused(false)
-            }
-          }}
-        >
-          <SearchIcon />
-          <input
-            ref={searchInputRef}
-            aria-label="Search languages"
-            placeholder="Search language, ISO code, family…"
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value)
-              setPage(1)
-            }}
-            onFocus={() => setSearchFocused(true)}
-          />
-          {query ? (
-            <button
-              type="button"
-              onClick={() => {
-                setQuery("")
-                setPage(1)
-              }}
-              aria-label="Clear search"
-            >
-              <CloseIcon />
-            </button>
-          ) : (
-            <kbd>/</kbd>
-          )}
-          {searchFocused && query.trim() ? (
-            <div className={styles.searchResults}>
-              {searchResults.length ? (
-                searchResults.map((language) => (
-                  <button
-                    type="button"
-                    key={language.id}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onPointerDown={(event) => event.preventDefault()}
-                    onClick={() => {
-                      setSelectedLanguage(language)
-                      setSearchFocused(false)
-                      setView("map")
-                    }}
-                  >
-                    <span>
-                      <strong>{language.name}</strong>
-                      <small>
-                        {language.family} · {language.macroarea}
-                      </small>
-                    </span>
-                    <code>{language.iso ?? language.id}</code>
-                  </button>
-                ))
-              ) : (
-                <p>No language matches this search.</p>
-              )}
-            </div>
-          ) : null}
-        </div>
-
-        <div className={styles.filterRow}>
-          {FILTERS.map((item) => (
-            <button
-              type="button"
-              key={item.id}
-              data-active={filter === item.id}
-              onClick={() => {
-                setFilter(item.id)
-                setPage(1)
-              }}
-            >
-              {item.id !== "all" ? (
-                <DomainDot domain={item.id === "gaps" ? "gap" : item.id} />
-              ) : null}
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        <label className={styles.macroareaSelect}>
-          <span className={styles.srOnly}>Macroarea</span>
-          <select
-            value={macroarea}
-            onChange={(event) => {
-              setMacroarea(event.target.value)
-              setPage(1)
-            }}
-          >
-            <option value="all">All regions</option>
-            {macroareas.map((area) => (
-              <option key={area}>{area}</option>
-            ))}
-          </select>
-        </label>
-
-        <div className={styles.mobileLinks}>
-          <button type="button" onClick={() => setDrawer("resources")}>
-            Resources
-          </button>
-          <button type="button" onClick={() => setDrawer("methodology")}>
-            Methods
-          </button>
-        </div>
-      </section>
 
       <section className={styles.mapStage} hidden={view !== "map"}>
         <LanguageGlobe

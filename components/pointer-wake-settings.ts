@@ -8,7 +8,7 @@ export type PointerWakeSettings = Readonly<{
 }>
 
 export const DEFAULT_POINTER_WAKE_SETTINGS: PointerWakeSettings = {
-  accent: 0.05,
+  accent: 0.15,
   density: 0.73,
   opacity: 0.42,
   radius: 7.2,

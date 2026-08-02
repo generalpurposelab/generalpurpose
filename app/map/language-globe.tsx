@@ -561,9 +561,6 @@ export function LanguageGlobe({
           <span>Country boundary · Natural Earth</span>
         </div>
       ) : null}
-      <div className={styles.globeHint}>
-        Drag to rotate · hover countries · select a language
-      </div>
     </div>
   )
 }

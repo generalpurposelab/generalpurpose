@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import {
   useEffect,
   useRef,
@@ -164,13 +163,7 @@ export function HomeIdentityPreview({
       >
         <GeneralPurposeIdentity pattern={activePattern} resolution={24} />
         <p className="tagline">
-          <span>
-            <Link className="tagline-name" href="/about">
-              General Purpose
-            </Link>{" "}
-            is a design and technology studio that applies frontier intelligence
-            to{" "}
-          </span>
+          <span>Frontier intelligence to </span>
           <TaglineChallenge value={challenge} />
         </p>
         {children}

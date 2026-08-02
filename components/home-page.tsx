@@ -6,6 +6,27 @@ import type { IdentityPattern } from "@/components/gp-product-scales"
 
 type HomeWritingHref = Route<`/projects/${string}` | `/writing/${string}`>
 
+const MONTH_LABELS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const
+
+function monthYear(dateTime: string) {
+  const [year, month] = dateTime.split("-")
+  const monthLabel = MONTH_LABELS[Number(month) - 1]
+  return monthLabel ? `${monthLabel} ${year}` : year
+}
+
 /*
 const TEAM = [
   ["Ed Bayes", "https://x.com/edbayes"],
@@ -18,7 +39,6 @@ export type HomeProject = {
   slug: string
   title: string
   challenge: string
-  dateLabel: string
   dateTime: string
   label?: string
   pattern: IdentityPattern
@@ -29,7 +49,6 @@ export type HomeWritingGroup = {
   posts: readonly {
     title: string
     href: HomeWritingHref
-    date: string
     dateTime: string
     label?: string
     pattern: IdentityPattern
@@ -57,39 +76,57 @@ export function HomePage({
     }
   }
 
+  const uhuraPattern = projects.find(
+    (project) => project.slug === "uhura"
+  )?.pattern
+
   return (
     <HomeIdentityPreview challengeByPattern={challengeByPattern}>
       <section className="section">
-        <h2 className="heading">Projects</h2>
+        <h2 className="heading">Expeditions</h2>
         <table className="writing-table projects-table">
           <tbody>
-            {projects.map((project) => {
-              const year = project.dateTime.slice(0, 4)
-              return (
-                <tr className="writing-row project-row" key={project.slug}>
-                  <th scope="row">
-                    <time dateTime={project.dateTime}>{year}</time>
-                  </th>
-                  <td className="writing-title project-title">
-                    <Link
-                      href={`/projects/${project.slug}`}
-                      data-identity-pattern={project.pattern}
-                      data-preload-canopy-globe={
-                        project.slug === "uhura" ? "" : undefined
-                      }
-                    >
-                      {project.title}
-                    </Link>
-                    {project.label ? (
-                      <span className="writing-label">{project.label}</span>
-                    ) : null}
-                  </td>
-                  <td className="writing-date">
-                    <time dateTime={project.dateTime}>{project.dateLabel}</time>
-                  </td>
-                </tr>
-              )
-            })}
+            {projects.map((project) => (
+              <tr className="writing-row project-row" key={project.slug}>
+                <td className="writing-title project-title">
+                  <Link
+                    href={`/projects/${project.slug}`}
+                    data-identity-pattern={project.pattern}
+                    data-preload-canopy-globe={
+                      project.slug === "uhura" ? "" : undefined
+                    }
+                  >
+                    {project.title}
+                  </Link>
+                  {project.label ? (
+                    <span className="writing-label">{project.label}</span>
+                  ) : null}
+                </td>
+                <td className="writing-date">
+                  <time dateTime={project.dateTime}>
+                    {monthYear(project.dateTime)}
+                  </time>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="section tools-section">
+        <h2 className="heading">Tools</h2>
+        <table className="writing-table">
+          <tbody>
+            <tr className="writing-row">
+              <td className="writing-title">
+                <Link href="/map" data-identity-pattern={uhuraPattern}>
+                  Glottomap
+                </Link>
+              </td>
+              <td className="writing-date">
+                <time dateTime="2026-08-01">Aug 2026</time>
+              </td>
+            </tr>
           </tbody>
         </table>
       </section>
@@ -99,13 +136,8 @@ export function HomePage({
         <table className="writing-table">
           {writing.map((group) => (
             <tbody key={group.year}>
-              {group.posts.map((post, index) => (
+              {group.posts.map((post) => (
                 <tr className="writing-row" key={post.href}>
-                  {index === 0 ? (
-                    <th scope="rowgroup" rowSpan={group.posts.length}>
-                      {group.year}
-                    </th>
-                  ) : null}
                   <td className="writing-title">
                     {post.disabled ? (
                       <span
@@ -135,7 +167,9 @@ export function HomePage({
                     )}
                   </td>
                   <td className="writing-date">
-                    <time dateTime={post.dateTime}>{post.date}</time>
+                    <time dateTime={post.dateTime}>
+                      {monthYear(post.dateTime)}
+                    </time>
                   </td>
                 </tr>
               ))}

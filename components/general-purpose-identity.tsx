@@ -398,6 +398,10 @@ export function IdentityGrid({
   )
 }
 
+function IdentityWordmark() {
+  return <span className="identity-wordmark" aria-hidden="true" />
+}
+
 export function GeneralPurposeIdentity({
   pattern = null,
   pointerSettings = DEFAULT_IDENTITY_POINTER_SETTINGS,
@@ -418,6 +422,7 @@ export function GeneralPurposeIdentity({
         pointerSettings={pointerSettings}
         resolution={resolution}
       />
+      <IdentityWordmark />
     </div>
   )
 }

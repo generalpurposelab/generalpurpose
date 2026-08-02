@@ -1,13 +1,13 @@
 .atlas {
-  --atlas-bg: #f3f2ec;
-  --atlas-panel: rgb(250 249 245 / 94%);
-  --atlas-solid: #faf9f5;
-  --atlas-ink: #16181b;
-  --atlas-muted: #6f736f;
-  --atlas-faint: #979a95;
-  --atlas-rule: rgb(24 27 30 / 12%);
-  --atlas-rule-strong: rgb(24 27 30 / 20%);
-  --atlas-shadow: 0 22px 70px rgb(22 25 28 / 12%);
+  --atlas-bg: #fff;
+  --atlas-panel: rgb(255 255 255 / 94%);
+  --atlas-solid: #fff;
+  --atlas-ink: #111;
+  --atlas-muted: #999;
+  --atlas-faint: #aaa;
+  --atlas-rule: #eee;
+  --atlas-rule-strong: #ddd;
+  --atlas-shadow: 0 16px 40px rgb(0 0 0 / 8%);
   --text-color: #24a66d;
   --translation-color: #f17529;
   --speech-color: #c536a4;
@@ -18,30 +18,22 @@
   height: 100svh;
   min-height: 640px;
   overflow: hidden;
-  background:
-    radial-gradient(
-      circle at 62% 48%,
-      rgb(255 255 255 / 78%) 0,
-      transparent 48%
-    ),
-    var(--atlas-bg);
+  background: var(--atlas-bg);
   color: var(--atlas-ink);
   color-scheme: light;
 }
 
 :global(:root[data-theme="dark"]) .atlas {
-  --atlas-bg: #101215;
-  --atlas-panel: rgb(20 23 27 / 94%);
-  --atlas-solid: #15181c;
-  --atlas-ink: #f0f1ed;
-  --atlas-muted: #a3a7a5;
-  --atlas-faint: #777c7c;
-  --atlas-rule: rgb(240 242 237 / 13%);
-  --atlas-rule-strong: rgb(240 242 237 / 24%);
-  --atlas-shadow: 0 22px 80px rgb(0 0 0 / 38%);
-  background:
-    radial-gradient(circle at 62% 48%, rgb(45 49 55 / 30%) 0, transparent 48%),
-    var(--atlas-bg);
+  --atlas-bg: #1a1a1a;
+  --atlas-panel: rgb(26 26 26 / 94%);
+  --atlas-solid: #1a1a1a;
+  --atlas-ink: #ededed;
+  --atlas-muted: #707070;
+  --atlas-faint: #606060;
+  --atlas-rule: #2e2e2e;
+  --atlas-rule-strong: #444;
+  --atlas-shadow: 0 16px 40px rgb(0 0 0 / 30%);
+  background: var(--atlas-bg);
   color-scheme: dark;
 }
 
@@ -49,60 +41,54 @@
   position: relative;
   z-index: 40;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  height: 72px;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--atlas-rule);
-  background: color-mix(in srgb, var(--atlas-bg) 86%, transparent);
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  column-gap: 32px;
+  align-items: start;
+  height: 190px;
+  padding: 14px 24px 0;
+  border-bottom: 0;
+  background: color-mix(in srgb, var(--atlas-bg) 94%, transparent);
   backdrop-filter: blur(18px);
 }
 
-.brandBlock {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.brandBlock > div {
-  display: grid;
-  gap: 2px;
-}
-
-.brandBlock span {
-  font-size: 13px;
-  font-weight: 640;
-  letter-spacing: -0.01em;
-}
-
-.brandBlock small {
+.brandIdentity {
+  position: relative;
+  display: block;
+  width: 112px;
+  height: 162.4px;
   color: var(--atlas-muted);
-  font-size: 10px;
-  letter-spacing: 0.02em;
+  text-decoration: none;
+  transition: color 150ms ease;
 }
 
-.wordmark {
-  display: grid;
-  flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  border: 1px solid var(--atlas-ink);
-  border-radius: 50%;
-  color: inherit;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: -0.08em;
-  text-decoration: none;
+.brandIdentity:hover,
+.brandIdentity:focus-visible {
+  color: var(--atlas-ink);
+}
+
+.brandIdentity :global(.identity) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+  transform: none;
+  transform-origin: top left;
+}
+
+.headerCenter {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: center;
+  margin-top: 16px;
 }
 
 .viewToggle {
   display: flex;
-  padding: 3px;
-  border: 1px solid var(--atlas-rule);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--atlas-solid) 72%, transparent);
+  align-self: start;
+  justify-self: end;
+  gap: 6px;
+  margin-top: 16px;
 }
 
 .viewToggle button,
@@ -117,101 +103,121 @@
 }
 
 .viewToggle button {
-  min-width: 76px;
-  padding: 7px 14px;
+  min-width: 72px;
+  padding: 7px 12px;
+  border: 1px solid var(--atlas-rule-strong);
   border-radius: 999px;
   color: var(--atlas-muted);
-  font-size: 11px;
-  font-weight: 560;
+  font-size: 12px;
+  font-weight: 400;
   transition: 160ms ease;
 }
 
+.viewToggle button:hover,
+.viewToggle button:focus-visible,
 .viewToggle button[data-active="true"] {
-  background: var(--atlas-ink);
-  color: var(--atlas-bg);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+  border-color: var(--atlas-muted);
+  color: var(--atlas-ink);
 }
 
 .headerLinks {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 6px;
 }
 
 .headerLinks button {
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
   color: var(--atlas-muted);
-  font-size: 11px;
+  font-size: 12px;
   transition: 150ms ease;
 }
 
 .headerLinks button:hover,
 .headerLinks button:focus-visible {
-  background: var(--atlas-rule);
+  border-color: var(--atlas-rule-strong);
+  background: transparent;
   color: var(--atlas-ink);
 }
 
 .controls {
-  position: absolute;
-  top: 94px;
-  left: 24px;
+  position: relative;
   z-index: 30;
-  display: grid;
-  width: min(710px, calc(100vw - 48px));
-  grid-template-columns: minmax(0, 530px) 172px;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: center;
   gap: 10px;
 }
 
 .searchWrap {
   position: relative;
   z-index: 60;
-  display: flex;
-  align-items: center;
-  height: 48px;
-  border: 1px solid var(--atlas-rule-strong);
-  border-radius: 14px;
-  background: var(--atlas-panel);
-  box-shadow: 0 8px 30px rgb(20 24 28 / 7%);
-  backdrop-filter: blur(22px);
-  width: 430px;
-  max-width: 100%;
-  grid-column: 1;
-}
-
-.searchWrap > svg {
-  flex: 0 0 auto;
-  width: 17px;
-  height: 17px;
-  margin-left: 16px;
-  fill: none;
-  stroke: var(--atlas-muted);
-  stroke-linecap: round;
-  stroke-width: 1.6;
+  height: auto;
+  width: min(30vw, 360px);
+  min-width: 180px;
+  flex: 1 1 260px;
+  max-width: 360px;
 }
 
 .searchWrap input {
   width: 100%;
-  height: 100%;
-  padding: 0 12px;
+  padding: 0.5rem 36px 0.5rem 24px;
   border: 0;
-  outline: 0;
+  border-bottom: 1px solid #e5e5e5;
+  border-radius: 0;
+  outline: none;
   background: transparent;
   color: var(--atlas-ink);
   font: inherit;
-  font-size: 13px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  transition: border-color 0.15s ease;
+}
+
+.searchWrap input:focus,
+.atlas .searchWrap input:focus-visible {
+  border-color: #999;
+  outline: none;
+}
+
+:global(:root[data-theme="dark"]) .searchWrap input {
+  border-bottom-color: #333;
+}
+
+:global(:root[data-theme="dark"]) .searchWrap input:focus,
+:global(:root[data-theme="dark"]) .atlas .searchWrap input:focus-visible {
+  border-color: #777;
 }
 
 .searchWrap input::placeholder {
   color: var(--atlas-faint);
 }
 
+.searchWrap > svg {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: var(--atlas-muted);
+  stroke-linecap: round;
+  stroke-width: 1.5;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
 .searchWrap > button {
+  position: absolute;
+  top: 50%;
+  right: 0;
   display: grid;
-  flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  margin-right: 7px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   place-items: center;
   border: 0;
@@ -219,10 +225,11 @@
   background: transparent;
   color: var(--atlas-muted);
   cursor: pointer;
+  transform: translateY(-50%);
 }
 
 .searchWrap > button:hover {
-  background: var(--atlas-rule);
+  background: transparent;
   color: var(--atlas-ink);
 }
 
@@ -233,26 +240,16 @@
   stroke-width: 1.5;
 }
 
-.searchWrap kbd {
-  margin-right: 13px;
-  padding: 2px 6px;
-  border: 1px solid var(--atlas-rule);
-  border-radius: 5px;
-  color: var(--atlas-faint);
-  font-family: inherit;
-  font-size: 9px;
-}
-
 .searchResults {
   position: absolute;
   top: calc(100% + 7px);
   right: 0;
   left: 0;
   z-index: 50;
-  padding: 6px;
+  padding: 0 12px;
   overflow: hidden;
-  border: 1px solid var(--atlas-rule-strong);
-  border-radius: 14px;
+  border: 1px solid var(--atlas-rule);
+  border-radius: 0;
   background: var(--atlas-solid);
   box-shadow: var(--atlas-shadow);
 }
@@ -262,9 +259,10 @@
   width: 100%;
   align-items: center;
   justify-content: space-between;
-  padding: 10px;
+  padding: 11px 0;
   border: 0;
-  border-radius: 9px;
+  border-bottom: 1px solid var(--atlas-rule);
+  border-radius: 0;
   background: transparent;
   color: inherit;
   text-align: left;
@@ -273,7 +271,8 @@
 
 .searchResults button:hover,
 .searchResults button:focus-visible {
-  background: var(--atlas-rule);
+  background: transparent;
+  color: var(--atlas-muted);
   outline: 0;
 }
 
@@ -284,8 +283,8 @@
 }
 
 .searchResults strong {
-  font-size: 12px;
-  font-weight: 620;
+  font-size: 14px;
+  font-weight: 400;
 }
 
 .searchResults small {
@@ -310,11 +309,12 @@
 
 .filterRow {
   display: flex;
+  align-items: center;
   gap: 6px;
-  overflow-x: auto;
+  flex: 0 0 auto;
+  overflow-x: visible;
   scrollbar-width: none;
-  grid-row: 2;
-  grid-column: 1;
+  justify-content: flex-start;
 }
 
 .filterRow::-webkit-scrollbar {
@@ -326,13 +326,12 @@
   flex: 0 0 auto;
   align-items: center;
   gap: 6px;
-  padding: 8px 11px;
-  border: 1px solid var(--atlas-rule);
+  padding: 7px 10px;
+  border: 1px solid var(--atlas-rule-strong);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--atlas-panel) 88%, transparent);
+  background: transparent;
   color: var(--atlas-muted);
-  font-size: 10px;
-  backdrop-filter: blur(16px);
+  font-size: 12px;
 }
 
 .filterRow button:hover,
@@ -342,14 +341,12 @@
 }
 
 .filterRow button[data-active="true"] {
-  background: var(--atlas-solid);
+  background: transparent;
 }
 
 .macroareaSelect {
   position: static;
-  align-self: start;
-  grid-row: 2;
-  grid-column: 2;
+  flex: 0 0 auto;
 }
 
 .mobileLinks {
@@ -357,33 +354,45 @@
 }
 
 .mobileLinks button {
-  padding: 6px 9px;
-  border: 1px solid var(--atlas-rule);
+  padding: 7px 10px;
+  border: 1px solid var(--atlas-rule-strong);
   border-radius: 999px;
-  background: var(--atlas-panel);
+  background: transparent;
   color: var(--atlas-muted);
   font: inherit;
-  font-size: 9px;
+  font-size: 12px;
   cursor: pointer;
 }
 
+.mobileLinks button:hover,
+.mobileLinks button:focus-visible {
+  border-color: var(--atlas-muted);
+  color: var(--atlas-ink);
+}
+
 .macroareaSelect select {
-  height: 34px;
-  padding: 0 30px 0 12px;
-  border: 1px solid var(--atlas-rule);
-  border-radius: 999px;
+  height: 35px;
+  padding: 0 28px 0 0;
+  border: 0;
+  border-bottom: 1px solid var(--atlas-rule-strong);
+  border-radius: 0;
   outline: 0;
-  background: var(--atlas-panel);
+  background: transparent;
   color: var(--atlas-muted);
   font: inherit;
-  font-size: 10px;
+  font-size: 12px;
   cursor: pointer;
-  backdrop-filter: blur(16px);
+}
+
+.macroareaSelect select:hover,
+.macroareaSelect select:focus-visible {
+  border-color: var(--atlas-muted);
+  color: var(--atlas-ink);
 }
 
 .mapStage {
   position: absolute;
-  inset: 72px 0 0;
+  inset: 190px 0 0;
   overflow: hidden;
 }
 
@@ -391,8 +400,8 @@
   position: absolute;
   top: 50%;
   left: 55%;
-  width: min(78vw, 850px, calc(100svh - 96px));
-  height: min(78vw, 850px, calc(100svh - 96px));
+  width: min(78vw, 850px, calc(100svh - 214px));
+  height: min(78vw, 850px, calc(100svh - 214px));
   transform: translate(-50%, -50%);
 }
 
@@ -478,22 +487,6 @@
   font-size: 11px;
 }
 
-.globeHint {
-  position: absolute;
-  bottom: 4%;
-  left: 50%;
-  padding: 6px 9px;
-  border: 1px solid var(--atlas-rule);
-  border-radius: 999px;
-  background: var(--atlas-panel);
-  color: var(--atlas-muted);
-  font-size: 9px;
-  letter-spacing: 0.02em;
-  pointer-events: none;
-  transform: translateX(-50%);
-  backdrop-filter: blur(12px);
-}
-
 .mapTooltip {
   position: absolute;
   z-index: 20;
@@ -502,7 +495,7 @@
   gap: 2px;
   padding: 9px 11px;
   border: 1px solid var(--atlas-rule-strong);
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--atlas-solid);
   box-shadow: 0 10px 30px rgb(0 0 0 / 13%);
   pointer-events: none;
@@ -525,8 +518,8 @@
 
 .mapStats {
   position: absolute;
-  top: 26px;
-  right: 26px;
+  right: 24px;
+  bottom: 48px;
   display: grid;
   justify-items: end;
   pointer-events: none;
@@ -553,8 +546,8 @@
 
 .legend {
   position: absolute;
+  right: 24px;
   bottom: 22px;
-  left: 24px;
   display: flex;
   flex-wrap: wrap;
   max-width: 370px;
@@ -595,7 +588,7 @@
 }
 
 .tableStage {
-  min-height: calc(100svh - 72px);
+  min-height: calc(100svh - 190px);
   padding: 38px 32px 70px;
 }
 
@@ -606,37 +599,15 @@
 }
 
 .atlas[data-view="table"] .header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  right: 0;
+  left: 0;
+  background: var(--atlas-bg);
 }
 
-.atlas[data-view="table"] .controls {
-  position: relative;
-  top: auto;
-  left: auto;
-  width: auto;
-  max-width: none;
-  margin: 28px 32px 0;
-  grid-template-columns: minmax(280px, 430px) minmax(0, 1fr) auto;
-  align-items: center;
-}
-
-.atlas[data-view="table"] .filterRow {
-  grid-row: 1;
-  grid-column: 2;
-  align-items: center;
-}
-
-.atlas[data-view="table"] .searchWrap {
-  width: 100%;
-  grid-row: 1;
-  grid-column: 1;
-}
-
-.atlas[data-view="table"] .macroareaSelect {
-  position: static;
-  grid-row: 1;
-  grid-column: 3;
+.atlas[data-view="table"] .tableStage {
+  margin-top: 190px;
 }
 
 .tableIntro {
@@ -675,7 +646,7 @@
   max-width: 1500px;
   margin: 0 auto;
   overflow-x: auto;
-  border-top: 1px solid var(--atlas-rule-strong);
+  border-top: 1px solid var(--atlas-rule);
 }
 
 .tableScroll table {
@@ -689,11 +660,20 @@
   padding: 11px 12px;
   border-bottom: 1px solid var(--atlas-rule);
   color: var(--atlas-muted);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
   text-align: left;
-  text-transform: uppercase;
+}
+
+.tableScroll th:first-child,
+.tableScroll td:first-child {
+  padding-left: 0;
+}
+
+.tableScroll th:last-child,
+.tableScroll td:last-child {
+  padding-right: 0;
 }
 
 .tableScroll th:first-child {
@@ -722,20 +702,17 @@
 }
 
 .tableScroll td {
-  padding: 13px 12px;
+  padding: 11px 12px;
   border-bottom: 1px solid var(--atlas-rule);
-  color: var(--atlas-muted);
-  font-size: 11px;
-  line-height: 1.35;
-  vertical-align: middle;
+  color: var(--atlas-ink);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  vertical-align: top;
 }
 
-.tableScroll tbody tr {
-  transition: background-color 120ms ease;
-}
-
-.tableScroll tbody tr:hover {
-  background: color-mix(in srgb, var(--atlas-solid) 55%, transparent);
+.tableScroll tbody tr > * {
+  transition: opacity 140ms ease;
 }
 
 .tableScroll td:first-child button {
@@ -752,8 +729,8 @@
 
 .tableScroll td:first-child strong {
   overflow: hidden;
-  font-size: 12px;
-  font-weight: 620;
+  font-size: 14px;
+  font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -763,7 +740,7 @@
   margin-top: 2px;
   overflow: hidden;
   color: var(--atlas-faint);
-  font-size: 9px;
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -771,7 +748,7 @@
 .tableScroll code {
   color: var(--atlas-ink);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .tableScroll td:last-child {
@@ -789,7 +766,7 @@
   align-items: center;
   gap: 5px;
   color: var(--atlas-muted);
-  font-size: 9px;
+  font-size: 11px;
   opacity: 0.2;
 }
 
@@ -798,15 +775,9 @@
 }
 
 .resourceCount {
-  display: inline-grid;
-  min-width: 26px;
-  height: 22px;
-  padding: 0 7px;
-  place-items: center;
-  border: 1px solid var(--atlas-rule);
-  border-radius: 999px;
-  color: var(--atlas-ink);
-  font-size: 9px;
+  color: var(--atlas-muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
 
 .pagination {
@@ -817,13 +788,20 @@
   gap: 14px;
   margin: 18px auto 0;
   color: var(--atlas-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .pagination button {
-  padding: 7px 10px;
-  border: 1px solid var(--atlas-rule);
-  border-radius: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--atlas-rule-strong);
+  border-radius: 999px;
+  color: var(--atlas-muted);
+}
+
+.pagination button:not(:disabled):hover,
+.pagination button:not(:disabled):focus-visible {
+  border-color: var(--atlas-muted);
+  color: var(--atlas-ink);
 }
 
 .pagination button:disabled {
@@ -842,9 +820,9 @@
 }
 
 .noResults button {
-  padding: 7px 10px;
+  padding: 7px 12px;
   border: 1px solid var(--atlas-rule-strong);
-  border-radius: 8px;
+  border-radius: 999px;
   background: transparent;
   color: var(--atlas-ink);
   font: inherit;
@@ -904,7 +882,7 @@
   height: 34px;
   padding: 0;
   place-items: center;
-  border: 1px solid var(--atlas-rule);
+  border: 0;
   border-radius: 50%;
   background: transparent;
   color: var(--atlas-muted);
@@ -912,7 +890,6 @@
 }
 
 .iconButton:hover {
-  border-color: var(--atlas-rule-strong);
   color: var(--atlas-ink);
 }
 
@@ -1208,9 +1185,15 @@
   place-content: center;
   justify-items: center;
   gap: 12px;
-  background: #f3f2ec;
-  color: #16181b;
+  background: #fff;
+  color: #111;
   text-align: center;
+}
+
+:global(:root[data-theme="dark"]) .loadingState,
+:global(:root[data-theme="dark"]) .errorState {
+  background: #1a1a1a;
+  color: #ededed;
 }
 
 .loadingState span {
@@ -1256,14 +1239,145 @@
 }
 
 .errorState button {
-  padding: 8px 11px;
-  border: 1px solid #b8bbb6;
-  border-radius: 8px;
+  padding: 7px 12px;
+  border: 1px solid #ddd;
+  border-radius: 999px;
   background: transparent;
   color: inherit;
   font: inherit;
   font-size: 10px;
   cursor: pointer;
+}
+
+.errorState button:hover,
+.errorState button:focus-visible {
+  border-color: #999;
+}
+
+.errorState button:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 2px;
+}
+
+:global(:root[data-theme="dark"]) .errorState button {
+  border-color: #444;
+}
+
+.atlas button:focus-visible,
+.atlas select:focus-visible,
+.atlas input:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 2px;
+}
+
+.viewToggle button,
+.headerLinks button,
+.filterRow button,
+.mobileLinks button,
+.pagination button,
+.noResults button,
+.errorState button {
+  width: fit-content;
+  min-width: 0;
+  padding: 0.4375rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  background: transparent;
+  color: rgb(0 0 0 / 65%);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.viewToggle button:hover,
+.viewToggle button:focus-visible,
+.headerLinks button:hover,
+.headerLinks button:focus-visible,
+.filterRow button:hover,
+.filterRow button:focus-visible,
+.mobileLinks button:hover,
+.mobileLinks button:focus-visible,
+.pagination button:not(:disabled):hover,
+.pagination button:not(:disabled):focus-visible,
+.noResults button:hover,
+.noResults button:focus-visible,
+.errorState button:hover,
+.errorState button:focus-visible {
+  border-color: #999;
+  color: #111;
+}
+
+.viewToggle button:focus-visible,
+.headerLinks button:focus-visible,
+.filterRow button:focus-visible,
+.mobileLinks button:focus-visible,
+.pagination button:focus-visible,
+.noResults button:focus-visible,
+.errorState button:focus-visible {
+  outline: 2px solid rgb(0 122 255 / 50%);
+  outline-offset: 2px;
+}
+
+.viewToggle button[data-active="true"],
+.filterRow button[data-active="true"] {
+  border-color: #111;
+  background: #111;
+  color: #fff;
+}
+
+:global(:root[data-theme="dark"]) .viewToggle button,
+:global(:root[data-theme="dark"]) .headerLinks button,
+:global(:root[data-theme="dark"]) .filterRow button,
+:global(:root[data-theme="dark"]) .mobileLinks button,
+:global(:root[data-theme="dark"]) .pagination button,
+:global(:root[data-theme="dark"]) .noResults button,
+:global(:root[data-theme="dark"]) .errorState button {
+  border-color: #444;
+  color: rgb(255 255 255 / 70%);
+}
+
+:global(:root[data-theme="dark"]) .viewToggle button:hover,
+:global(:root[data-theme="dark"]) .viewToggle button:focus-visible,
+:global(:root[data-theme="dark"]) .headerLinks button:hover,
+:global(:root[data-theme="dark"]) .headerLinks button:focus-visible,
+:global(:root[data-theme="dark"]) .filterRow button:hover,
+:global(:root[data-theme="dark"]) .filterRow button:focus-visible,
+:global(:root[data-theme="dark"]) .mobileLinks button:hover,
+:global(:root[data-theme="dark"]) .mobileLinks button:focus-visible,
+:global(:root[data-theme="dark"]) .pagination button:not(:disabled):hover,
+:global(:root[data-theme="dark"])
+  .pagination
+  button:not(:disabled):focus-visible,
+:global(:root[data-theme="dark"]) .noResults button:hover,
+:global(:root[data-theme="dark"]) .noResults button:focus-visible,
+:global(:root[data-theme="dark"]) .errorState button:hover,
+:global(:root[data-theme="dark"]) .errorState button:focus-visible {
+  border-color: #777;
+  color: #fff;
+}
+
+:global(:root[data-theme="dark"]) .viewToggle button[data-active="true"],
+:global(:root[data-theme="dark"]) .filterRow button[data-active="true"] {
+  border-color: #ededed;
+  background: #ededed;
+  color: #111;
+}
+
+@media (hover: hover) and (min-width: 520px) {
+  .tableScroll tbody:hover tr > * {
+    opacity: 0.3;
+  }
+
+  .tableScroll tbody tr:hover > *,
+  .tableScroll tbody tr:focus-within > * {
+    opacity: 1;
+  }
 }
 
 .srOnly {
@@ -1277,14 +1391,55 @@
   border: 0;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1180px) and (min-width: 961px) {
   .header {
-    grid-template-columns: 1fr auto;
+    column-gap: 20px;
+  }
+
+  .searchWrap {
+    min-width: 160px;
+  }
+
+  .filterRow button[data-filter="translation"]:not([data-active="true"]),
+  .filterRow button[data-filter="speech"]:not([data-active="true"]) {
+    display: none;
+  }
+}
+
+@media (max-width: 1060px) and (min-width: 961px) {
+  .filterRow button[data-filter="text"]:not([data-active="true"]) {
+    display: none;
+  }
+
+  .filterRow:has(button[data-active="true"]:not([data-filter="all"]))
+    button[data-filter="all"] {
+    display: none;
+  }
+
+  .macroareaSelect select {
+    width: 180px;
+  }
+}
+
+@media (max-width: 960px) {
+  .header {
+    height: 240px;
+    padding: 14px 24px 0;
+    grid-template-columns: 112px minmax(0, 1fr);
+    grid-template-rows: 162.4px auto;
+    column-gap: 16px;
+  }
+
+  .headerCenter {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    margin-top: 0;
   }
 
   .viewToggle {
     grid-row: 1;
     grid-column: 2;
+    justify-self: end;
   }
 
   .headerLinks {
@@ -1292,18 +1447,24 @@
   }
 
   .controls {
-    width: calc(100vw - 48px);
-    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    justify-content: center;
   }
 
-  .searchWrap,
-  .filterRow,
-  .mobileLinks {
-    grid-column: 1;
+  .searchWrap {
+    min-width: 160px;
+  }
+
+  .filterRow {
+    justify-content: flex-start;
   }
 
   .macroareaSelect {
-    display: none;
+    display: block;
+  }
+
+  .macroareaSelect select {
+    width: 140px;
   }
 
   .mobileLinks {
@@ -1314,8 +1475,8 @@
 
   .globeWrap {
     left: 58%;
-    width: min(94vw, calc(100svh - 110px));
-    height: min(94vw, calc(100svh - 110px));
+    width: min(94vw, calc(100svh - 264px));
+    height: min(94vw, calc(100svh - 264px));
   }
 
   .mapStats {
@@ -1332,27 +1493,34 @@
     display: none;
   }
 
-  .atlas[data-view="table"] .controls {
-    grid-template-columns: 1fr auto;
+  .mapStage {
+    inset: 240px 0 0;
   }
 
-  .atlas[data-view="table"] .searchWrap {
-    width: 100%;
+  .tableStage {
+    min-height: calc(100svh - 240px);
   }
 
-  .atlas[data-view="table"] .filterRow {
-    grid-row: 2;
-    grid-column: 1 / -1;
-  }
-
-  .atlas[data-view="table"] .mobileLinks {
-    grid-row: 3;
-    grid-column: 1 / -1;
+  .atlas[data-view="table"] .tableStage {
+    margin-top: 240px;
   }
 
   .tableIntro {
     grid-template-columns: 1fr;
     gap: 16px;
+  }
+}
+
+@media (max-width: 900px) {
+  .filterRow button[data-filter="translation"]:not([data-active="true"]),
+  .filterRow button[data-filter="speech"]:not([data-active="true"]) {
+    display: none;
+  }
+}
+
+@media (max-width: 800px) {
+  .filterRow button:not([data-filter="all"]):not([data-active="true"]) {
+    display: none;
   }
 }
 
@@ -1362,51 +1530,34 @@
   }
 
   .header {
-    height: 64px;
-    padding: 0 12px;
-  }
-
-  .brandBlock small {
-    display: none;
-  }
-
-  .wordmark {
-    width: 30px;
-    height: 30px;
-  }
-
-  .viewToggle button {
-    min-width: 60px;
-    padding: 6px 10px;
+    height: 240px;
+    padding: 14px 12px 0;
   }
 
   .controls {
-    top: 78px;
-    left: 12px;
-    width: calc(100vw - 24px);
+    justify-content: center;
   }
 
   .searchWrap {
-    height: 44px;
+    height: auto;
+    min-width: 150px;
+    flex: 1 1 180px;
+    max-width: 240px;
   }
 
   .macroareaSelect {
-    display: none;
+    display: block;
   }
 
   .mapStage {
-    inset: 64px 0 0;
+    inset: 240px 0 0;
   }
 
   .globeWrap {
     top: 57%;
     left: 58%;
-    width: min(112vw, calc(100svh - 110px));
-    height: min(112vw, calc(100svh - 110px));
-  }
-
-  .globeHint {
-    display: none;
+    width: min(112vw, calc(100svh - 264px));
+    height: min(112vw, calc(100svh - 264px));
   }
 
   .mapStats {
@@ -1419,17 +1570,8 @@
   }
 
   .tableStage {
-    min-height: calc(100svh - 64px);
+    min-height: calc(100svh - 240px);
     padding: 28px 14px 50px;
-  }
-
-  .atlas[data-view="table"] .controls {
-    margin: 16px 14px 0;
-    grid-template-columns: 1fr;
-  }
-
-  .atlas[data-view="table"] .macroareaSelect {
-    display: none;
   }
 
   .tableIntro h1 {
@@ -1451,6 +1593,22 @@
 
   .pagination {
     justify-content: space-between;
+  }
+}
+
+@media (max-width: 520px) {
+  .macroareaSelect select {
+    width: 108px;
+  }
+
+  .filterRow button[data-filter="all"]:not([data-active="true"]) {
+    display: none;
+  }
+}
+
+@media (max-width: 400px) {
+  .filterRow button:not([data-active="true"]) {
+    display: none;
   }
 }
 

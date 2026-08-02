@@ -50,7 +50,7 @@ export const projects = [
     summary:
       "A benchmark for testing scientific reasoning and truthfulness across six African languages.",
     challenge: "trustworthy AI across every language.",
-    pattern: "cmdk",
+    pattern: "canopy",
     hero: "globe",
     sections: [
       {
@@ -113,7 +113,7 @@ export const projects = [
     summary:
       "A living interface for the autonomous systems helping people discover, understand, and preserve rainforest biodiversity.",
     challenge: "real-time understanding of living ecosystems.",
-    pattern: "canopy",
+    pattern: "cmdk",
     hero: "rainforest",
     sections: [
       {

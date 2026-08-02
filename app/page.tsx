@@ -10,7 +10,6 @@ const upcomingWriting = [
   {
     title: "Autonomy in the Amazon with Nigel Pitman",
     href: "/projects/canopy",
-    date: "Sept",
     dateTime: "2026-09-01",
     label: "Upcoming",
     pattern: "nigel",
@@ -26,7 +25,6 @@ export default async function Page() {
     ...publishedWriting.map((post) => ({
       title: post.indexTitle,
       href: post.href,
-      date: post.dateLabel,
       dateTime: post.date,
       pattern: post.pattern,
       challenge: post.challenge,
@@ -51,7 +49,6 @@ export default async function Page() {
       slug: project.slug,
       title: project.title,
       challenge: project.challenge,
-      dateLabel: project.indexDateLabel,
       dateTime: project.indexDate,
       label: project.indexLabel,
       pattern: project.pattern,
