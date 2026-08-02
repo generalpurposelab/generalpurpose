@@ -1,57 +1,206 @@
 "use client"
 
-import createGlobe from "cobe"
+import type { Globe } from "cobe"
 import {
   useEffect,
   useRef,
+  useState,
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
 } from "react"
 
+import { loadCobe } from "@/components/canopy-globe-loader"
+import { THEME_CHANGE_EVENT } from "@/components/theme-toggle"
+
 const GLOBE_SIZE = 560
 const INITIAL_PHI = 3.32
 const INITIAL_THETA = 0.04
 
-const WORLD_CITIES = [
-  { id: "pg-sf", location: [37.78, -122.44], label: "San Francisco" },
-  { id: "pg-nyc", location: [40.71, -74.01], label: "New York" },
-  { id: "pg-london", location: [51.51, -0.13], label: "London" },
-  { id: "pg-tokyo", location: [35.68, 139.65], label: "Tokyo" },
-  { id: "pg-sydney", location: [-33.87, 151.21], label: "Sydney" },
-  { id: "pg-singapore", location: [1.35, 103.82], label: "Singapore" },
-  { id: "pg-dubai", location: [25.2, 55.27], label: "Dubai" },
-  { id: "pg-saopaulo", location: [-23.55, -46.63], label: "São Paulo" },
-  { id: "pg-capetown", location: [-33.92, 18.42], label: "Cape Town" },
+const ATLAS_LANGUAGES = [
+  {
+    id: "lang-yor",
+    location: [7.4, 3.9],
+    name: "Yoruba",
+    nativeName: "Èdè Yorùbá",
+    isoCode: "yor",
+    region: "West Africa",
+    family: "Niger-Congo",
+    speakers: "40 million speakers",
+    benchmark: {
+      name: "Uhura",
+      year: 2024,
+      tasks: ["ARC-Easy", "TruthfulQA"],
+    },
+    benchmarkCount: 19,
+  },
+  {
+    id: "lang-swa",
+    location: [-6, 36.8],
+    name: "Swahili",
+    nativeName: "Kiswahili",
+    isoCode: "swa",
+    region: "East Africa",
+    family: "Niger-Congo (Bantu)",
+    speakers: "16 million speakers",
+    benchmark: {
+      name: "Uhura",
+      year: 2024,
+      tasks: ["ARC-Easy", "TruthfulQA"],
+    },
+    benchmarkCount: 22,
+  },
+  {
+    id: "lang-mlg",
+    location: [-19, 46.9],
+    name: "Malagasy",
+    nativeName: "Malagasy",
+    isoCode: "mlg",
+    region: "East Africa",
+    family: "Austronesian",
+    speakers: "18 million speakers",
+    benchmark: null,
+    benchmarkCount: 0,
+  },
+  {
+    id: "lang-ind",
+    location: [-6.175, 106.8275],
+    name: "Indonesian",
+    nativeName: null,
+    isoCode: "ind",
+    region: "Indonesia",
+    family: "Austronesian",
+    speakers: "199 million speakers",
+    benchmark: {
+      name: "FLORES-200",
+      year: 2022,
+      tasks: ["Machine translation"],
+    },
+    benchmarkCount: 16,
+  },
+  {
+    id: "lang-ben",
+    location: [23.7, 90.4],
+    name: "Bengali",
+    nativeName: "বাংলা",
+    isoCode: "ben",
+    region: "South Asia",
+    family: "Indo-European (Indo-Aryan)",
+    speakers: "230 million speakers",
+    benchmark: {
+      name: "IndicGLUE",
+      year: 2022,
+      tasks: ["NLI", "Sentiment", "QA"],
+    },
+    benchmarkCount: 16,
+  },
+  {
+    id: "lang-que",
+    location: [-13.5, -72],
+    name: "Quechua",
+    nativeName: "Runa Simi",
+    isoCode: "que",
+    region: "South America",
+    family: "Quechuan",
+    speakers: "8.9 million speakers",
+    benchmark: {
+      name: "WikiANN",
+      year: 2019,
+      tasks: ["Named entity recognition"],
+    },
+    benchmarkCount: 1,
+  },
+  {
+    id: "lang-zap",
+    location: [23.6, -102.6],
+    name: "Zapotec",
+    nativeName: null,
+    isoCode: "zap",
+    region: "Mexico",
+    family: "Oto-Manguean",
+    speakers: "777,000 speakers",
+    benchmark: null,
+    benchmarkCount: 0,
+  },
+  {
+    id: "lang-nor",
+    location: [60.5, 8.5],
+    name: "Norwegian",
+    nativeName: null,
+    isoCode: "nor",
+    region: "Norway",
+    family: "Indo-European",
+    speakers: "5.2 million speakers",
+    benchmark: null,
+    benchmarkCount: 0,
+  },
 ] as const
 
-const WORLD_CITY_ARCS = [
+const LANGUAGE_RELATIONSHIPS = [
   {
-    id: "pg-sf-tokyo",
-    from: [37.78, -122.44],
-    to: [35.68, 139.65],
+    id: "shared-uhura",
+    languageIds: ["lang-yor", "lang-swa"],
+    from: [7.4, 3.9],
+    to: [-6, 36.8],
   },
   {
-    id: "pg-nyc-london",
-    from: [40.71, -74.01],
-    to: [51.51, -0.13],
-  },
-  {
-    id: "pg-london-dubai",
-    from: [51.51, -0.13],
-    to: [25.2, 55.27],
+    id: "shared-austronesian-family",
+    languageIds: ["lang-mlg", "lang-ind"],
+    from: [-19, 46.9],
+    to: [-6.175, 106.8275],
   },
 ] as const
 
 type MarkerLabelStyle = CSSProperties & {
-  "--city-visible": string
+  "--language-visible": string
   positionAnchor: string
 }
 
+function globeThemeOptions(dark: boolean) {
+  return {
+    dark: dark ? 1 : 0,
+    mapBrightness: dark ? 5 : 2,
+    baseColor: (dark ? [0.55, 0.55, 0.55] : [1, 1, 1]) as [
+      number,
+      number,
+      number,
+    ],
+    glowColor: (dark ? [0.22, 0.22, 0.22] : [1, 1, 1]) as [
+      number,
+      number,
+      number,
+    ],
+    markers: ATLAS_LANGUAGES.map(({ benchmark, id, location }) => ({
+      color: (benchmark
+        ? dark
+          ? [0.95, 0.95, 0.95]
+          : [0.1, 0.1, 0.1]
+        : dark
+          ? [0.85, 0.45, 0.33]
+          : [0.72, 0.29, 0.2]) as [number, number, number],
+      id,
+      location: [...location] as [number, number],
+      size: 0.045,
+    })),
+  }
+}
+
+function isDarkTheme() {
+  return document.documentElement.dataset.theme === "dark"
+}
+
 export function CanopyGlobe() {
+  const [selectedLanguageId, setSelectedLanguageId] = useState<string | null>(
+    null
+  )
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const renderGlobeRef = useRef<(() => void) | null>(null)
+  const updateRelationshipsRef = useRef<
+    ((languageId: string | null) => void) | null
+  >(null)
   const phiRef = useRef(INITIAL_PHI)
   const thetaRef = useRef(INITIAL_THETA)
+  const selectedLanguageRef = useRef<string | null>(null)
   const dragRef = useRef<{
     pointerId: number
     x: number
@@ -69,60 +218,140 @@ export function CanopyGlobe() {
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches
-    const globe = createGlobe(canvas, {
-      devicePixelRatio,
-      width: GLOBE_SIZE,
-      height: GLOBE_SIZE,
-      phi: phiRef.current,
-      theta: thetaRef.current,
-      dark: 0,
-      diffuse: 3,
-      mapSamples: 23_000,
-      mapBrightness: 2,
-      mapBaseBrightness: 0,
-      baseColor: [1, 1, 1],
-      markerColor: [0.1, 0.1, 0.1],
-      glowColor: [1, 1, 1],
-      scale: 1.15,
-      offset: [-10, 0],
-      markerElevation: 0.02,
-      markers: WORLD_CITIES.map(({ id, location }) => ({
-        id,
-        location: [...location],
-        size: 0.045,
-      })),
-      arcs: WORLD_CITY_ARCS.map(({ id, from, to }) => ({
-        id,
-        from: [...from],
-        to: [...to],
-      })),
-      arcColor: [0.3, 0.5, 1],
-      arcHeight: 0.3,
-      arcWidth: 0.4,
-    })
+    let disposed = false
+    let globe: Globe | null = null
+    let animationFrame: number | null = null
+    let isVisible = true
 
-    let animationFrame = 0
-    const animate = () => {
-      if (!reducedMotion && !dragRef.current) {
-        phiRef.current += 0.003
-      }
-
-      globe.update({
+    const renderGlobe = () => {
+      globe?.update({
         phi: phiRef.current,
         theta: thetaRef.current,
       })
-      animationFrame = window.requestAnimationFrame(animate)
     }
 
-    animationFrame = window.requestAnimationFrame(animate)
+    const animate = () => {
+      animationFrame = null
+      if (!dragRef.current && !selectedLanguageRef.current) {
+        phiRef.current += 0.003
+      }
+      renderGlobe()
+
+      if (isVisible) animationFrame = window.requestAnimationFrame(animate)
+    }
+
+    const startAnimation = () => {
+      if (!reducedMotion && isVisible && animationFrame === null) {
+        animationFrame = window.requestAnimationFrame(animate)
+      }
+    }
+
+    const stopAnimation = () => {
+      if (animationFrame === null) return
+      window.cancelAnimationFrame(animationFrame)
+      animationFrame = null
+    }
+
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      const size = Math.max(
+        1,
+        Math.round(Math.min(entry.contentRect.width, entry.contentRect.height))
+      )
+      globe?.update({ width: size, height: size })
+    })
+    resizeObserver.observe(canvas)
+
+    const intersectionObserver = new IntersectionObserver(([entry]) => {
+      isVisible = entry.isIntersecting
+      if (isVisible) {
+        renderGlobe()
+        startAnimation()
+      } else {
+        stopAnimation()
+      }
+    })
+    intersectionObserver.observe(canvas)
+
+    const initialize = async () => {
+      const { default: createGlobe } = await loadCobe()
+      if (disposed) return
+
+      const bounds = canvas.getBoundingClientRect()
+      const size = Math.max(
+        1,
+        Math.round(Math.min(bounds.width, bounds.height) || GLOBE_SIZE)
+      )
+
+      globe = createGlobe(canvas, {
+        devicePixelRatio,
+        width: size,
+        height: size,
+        phi: phiRef.current,
+        theta: thetaRef.current,
+        diffuse: 3,
+        mapSamples: size < 400 ? 14_000 : 23_000,
+        mapBaseBrightness: 0,
+        markerColor: [0.1, 0.1, 0.1],
+        scale: 1.15,
+        offset: [-10, 0],
+        markerElevation: 0.02,
+        arcs: [],
+        arcColor: [0.3, 0.5, 1],
+        arcHeight: 0.3,
+        arcWidth: 0.4,
+        ...globeThemeOptions(isDarkTheme()),
+      })
+      updateRelationshipsRef.current = (languageId) => {
+        const relationships = languageId
+          ? LANGUAGE_RELATIONSHIPS.filter(({ languageIds }) =>
+              (languageIds as readonly string[]).includes(languageId)
+            )
+          : []
+
+        globe?.update({
+          arcs: relationships.map(({ id, from, to }) => ({
+            id,
+            from: [...from],
+            to: [...to],
+          })),
+        })
+      }
+      renderGlobeRef.current = renderGlobe
+      updateRelationshipsRef.current(selectedLanguageRef.current)
+      renderGlobe()
+      startAnimation()
+    }
+
+    const handleThemeChange = () => {
+      globe?.update(globeThemeOptions(isDarkTheme()))
+      renderGlobe()
+    }
+    window.addEventListener(THEME_CHANGE_EVENT, handleThemeChange)
+
+    void initialize().catch((error: unknown) => {
+      if (!disposed) console.error("Unable to initialize Canopy globe", error)
+    })
 
     return () => {
-      window.cancelAnimationFrame(animationFrame)
-      globe.destroy()
+      disposed = true
+      renderGlobeRef.current = null
+      updateRelationshipsRef.current = null
+      window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange)
+      resizeObserver.disconnect()
+      intersectionObserver.disconnect()
+      stopAnimation()
+      globe?.destroy()
     }
   }, [])
 
+  const selectLanguage = (languageId: string | null) => {
+    selectedLanguageRef.current = languageId
+    setSelectedLanguageId(languageId)
+    updateRelationshipsRef.current?.(languageId)
+  }
+
   const handlePointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
+    selectLanguage(null)
     dragRef.current = {
       pointerId: event.pointerId,
       x: event.clientX,
@@ -143,6 +372,7 @@ export function CanopyGlobe() {
       -1.15,
       Math.min(1.15, drag.theta + (event.clientY - drag.y) / 300)
     )
+    renderGlobeRef.current?.()
   }
 
   const handlePointerEnd = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -171,15 +401,25 @@ export function CanopyGlobe() {
       -1.15,
       Math.min(1.15, thetaRef.current + adjustment[1])
     )
+    renderGlobeRef.current?.()
+  }
+
+  const handleLanguageKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== "Escape") return
+
+    event.preventDefault()
+    selectLanguage(null)
   }
 
   return (
     <div className="canopy-globe-wrap">
       <canvas
         ref={canvasRef}
+        width={GLOBE_SIZE}
+        height={GLOBE_SIZE}
         className="canopy-globe-canvas"
         role="img"
-        aria-label="Interactive Canopy globe with world cities and routes. Drag or use the arrow keys to rotate."
+        aria-label="Interactive atlas of languages and benchmark coverage. Drag or use the arrow keys to rotate."
         tabIndex={0}
         onKeyDown={handleKeyDown}
         onPointerDown={handlePointerDown}
@@ -187,19 +427,76 @@ export function CanopyGlobe() {
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
       />
-      <div aria-hidden="true">
-        {WORLD_CITIES.map(({ id, label }) => {
+      <div className="canopy-language-labels">
+        {ATLAS_LANGUAGES.map((language) => {
+          const {
+            benchmark,
+            benchmarkCount,
+            family,
+            id,
+            isoCode,
+            name,
+            nativeName,
+            region,
+            speakers,
+          } = language
           const visibility = `var(--cobe-visible-${id}, 0)`
+          const isSelected = selectedLanguageId === id
+          const benchmarkSummary = benchmark
+            ? `${benchmarkCount} benchmark${benchmarkCount === 1 ? "" : "s"}`
+            : "No benchmark yet"
           const style: MarkerLabelStyle = {
-            "--city-visible": visibility,
+            "--language-visible": visibility,
             positionAnchor: `--cobe-${id}`,
             opacity: visibility,
           }
 
           return (
-            <span className="canopy-city-label" key={id} style={style}>
-              {label}
-            </span>
+            <button
+              aria-expanded={isSelected}
+              aria-label={`${name}, ${benchmarkSummary.toLowerCase()}`}
+              className="canopy-language-label"
+              data-expanded={isSelected}
+              data-status={benchmark ? "benchmarked" : "needed"}
+              key={id}
+              onClick={() => selectLanguage(isSelected ? null : id)}
+              onKeyDown={handleLanguageKeyDown}
+              style={style}
+              type="button"
+            >
+              <span className="canopy-language-heading">
+                <span className="canopy-language-name">{name}</span>
+                {nativeName && nativeName !== name ? (
+                  <span className="canopy-language-native">{nativeName}</span>
+                ) : null}
+              </span>
+              {isSelected ? (
+                <span className="canopy-language-details">
+                  <span className="canopy-language-meta">
+                    <span>{region}</span>
+                    <span>{speakers}</span>
+                    <span>{family}</span>
+                    <span>{isoCode}</span>
+                  </span>
+                  <span className="canopy-language-status">
+                    <span className="canopy-language-status-dot" />
+                    {benchmarkSummary}
+                  </span>
+                  {benchmark ? (
+                    <span className="canopy-language-benchmark">
+                      <span>
+                        {benchmark.name} · {benchmark.year}
+                      </span>
+                      <span>{benchmark.tasks.join(" · ")}</span>
+                    </span>
+                  ) : (
+                    <span className="canopy-language-needed">
+                      Benchmark needed
+                    </span>
+                  )}
+                </span>
+              ) : null}
+            </button>
           )
         })}
       </div>

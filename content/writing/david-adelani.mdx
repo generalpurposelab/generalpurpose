@@ -1,0 +1,94 @@
+import davidImage from "@/public/images/david-interview.png"
+import { ArticleImage } from "@/components/writing/article-media"
+
+export const metadata = {
+  slug: "david-adelani",
+  title: "Building NLP for African languages with David Adelani",
+  indexTitle: "Building NLP for African languages with David Adelani",
+  description:
+    "An interview with David Adelani about participatory research, Masakhane, and building NLP tools and datasets for African languages.",
+  author: "Ed Bayes",
+  date: "2026-08-01",
+  dateLabel: "Aug",
+  pattern: "david",
+  challenge: "trustworthy AI across every language.",
+}
+
+Few people have done more to put African languages on the map of modern NLP than [David Ifeoluwa Adelani](https://dadelani.github.io/). Now an Assistant Professor at McGill University, a Core Academic Member at Mila, and a Canada CIFAR AI Chair, David has been a driving force behind low-resource language research and evaluation — from the [MasakhaNER](https://arxiv.org/abs/2103.11811) dataset to benchmarks like [AfroBench](https://huggingface.co/spaces/McGill-NLP/AfroBench) and [Uhura](https://arxiv.org/abs/2412.00948) — and a core contributor to [Masakhane](https://www.masakhane.io/), the grassroots research collective that has produced datasets, benchmarks, and models for dozens of African languages - often by organizing volunteer annotators across a continent, spreadsheet by spreadsheet.
+
+General Purpose collaborated with Dr Adelani on [Uhura](https://arxiv.org/abs/2412.00948), a benchmark for evaluating scientific question answering and truthfulness in low-resource African languages. For our first newsletter, we spoke to David about how the field has changed since he first trained a neural network in MATLAB in 2009, what it actually took to build the first large multilingual datasets for African languages, why the tooling mattered as much as the data, and whether things are getting better.
+
+<ArticleImage
+  src={davidImage}
+  alt="David Adelani and Ed Bayes speaking over Zoom"
+/>
+
+## How did you get into this work?
+
+I've been working on AI for a very long time, even from Nigeria. My first research project was on artificial neural networks — a basic classification task. In my university we were all given projects in third year, and mine was neural networks, in MATLAB. So I got exposed to that technology very early — gradient descent, all of these algorithms — but this was around 2009, and neural networks were not very successful at that particular time. I came back to them for my master's around 2013–2014, working with a software engineering professor.
+
+I started grad school in 2015, in Germany. At first I was more interested in computer vision and data mining, and I did some work on social media analysis with statistical models. I found it difficult to choose between NLP and social media analysis — I tried social media analysis first, things didn't work well, and I moved back to NLP. And the time I moved to NLP was a very good time.
+
+In the fall of 2018 I did an internship in Japan with a security professor. I was supposed to work on adversarial attacks — and then BERT came out, and OpenAI had introduced the first GPT, so we changed the project: how cheaply can you generate fake reviews with these models? That became [my first intensive NLP project](https://arxiv.org/abs/1907.09177) — it's actually one of my most cited papers. We used the small GPT-2, around a hundred million parameters, to generate sentiment-preserving fake reviews, and BERT to classify them. I gave the reviews to friends and family to check, and they could not distinguish fake from original. This was when OpenAI was very reluctant to release the full billion-parameter GPT-2 — "too powerful, in the wrong hands you could do evil things." A very similar conversation to the one we're having now.
+
+## When did African languages enter?
+
+Two things. I was interested in machine translation for Yorùbá, but also in another problem: diacritics restoration. The models at the time were very weak at Yorùbá diacritics — Google Translate didn't preserve them at all, it just stripped everything out. So I started doing research on that. In the fall of 2018 I attended the WMT machine translation workshop at EMNLP in Brussels because I really wanted to work in this area. (One piece of positive news since then: LLMs have essentially solved Yorùbá diacritics.)
+
+In parallel there was the Deep Learning Indaba, which started in 2017. I didn't attend, but one of the big discussions there was that machine translation for African languages was a huge problem for the continent — Nando de Freitas talked about it, and he later connected me to a bunch of people, like Kyunghyun Cho at NYU. I was applying to the US, but that has a lot of hurdles — TOEFL, GRE, all of that — and in the end I got a PhD project at my university on privacy for NLP, not low-resource languages. So African NLP started as my side project. Eventually the side project became the main project.
+
+## How did Masakhane come together?
+
+There were discussions at the Deep Learning Indaba, and some people gathered together. One of the prominent people was Jade Abbott — she gave a provocative talk at the Widening NLP workshop at ACL 2019, benchmarking machine translation for Southern African languages. That was one of the things that started the movement.
+
+At the same time, a corpus called JW300 was released — a collection of Jehovah's Witness missionary articles covering close to a hundred African languages. Jade was pushing for the community to develop machine translation models with it, and she and others provided a GitHub repo with clear instructions on how to train them — which mattered, because machine translation is very difficult to train. In parallel, Julia Kreutzer — formerly at Google Translate, now at Cohere Labs — had developed [JoeyNMT](https://github.com/joeynmt/joeynmt), a minimalist machine translation toolkit that made training so easy that even non-experts who could code a little could train models for their own languages. Someone released the data, someone released the tool — that combination is how Masakhane started.
+
+Alongside that, the first [AfricaNLP workshop](https://africanlp-workshop.github.io/organizers.html) was organized at ICLR 2020, which was supposed to happen in person in Ethiopia — but it couldn't, because of COVID, so it switched to online. That's when I joined the community, in 2020. And afterwards I focused on the next problem: the lack of datasets for African languages.
+
+## What's the story behind [MasakhaNER](https://github.com/masakhane-io/masakhane-ner/)?
+
+The first question was: what is the best dataset to create? We had professors from different parts of the world in the discussion — Graham Neubig from CMU, Sebastian Ruder, other prominent people. I was interested in starting with topic classification. But we had created the first NER dataset for Yorùbá in 2019 — doing the annotation at night, for two days, on spreadsheets, to meet the LREC deadline. It was a small dataset, and it was real fun. And the advice from folks like Neubig was that the most valuable thing would be an NER dataset across African languages. So I decided to lead the project, since I had that experience — we did Yorùbá and Hausa first.
+
+It was a very participatory project. The community was very active — Jade organized weekly one-hour calls where people talked about the projects they were working on, and I kept pushing participants to work on this. Initially it was slow — maybe three or four languages fully participating. Then the community wanted to organize another AfricaNLP workshop the next year, so I used that as a push: if we can finish this, all of us will be authors of the paper. That was a super incentive for many people. That year we had one of the largest numbers of authors at an NLP venue — around sixty — and ten languages at once, which had never happened before. There had been an earlier effort in South Africa, but that was built from government data. This was the first that was genuinely community-led.
+
+## The participatory model had a precedent.
+
+Yes — the first participatory paper was the [Masakhane machine translation paper](https://arxiv.org/abs/2003.11529) at AfricaNLP; I wasn't involved in that one. Then came the paper people really know: ["Participatory Research for Low-Resourced Machine Translation"](https://aclanthology.org/2020.findings-emnlp.195/). It was rejected from the main EMNLP conference but accepted into Findings — and it's an unusual paper, nobody writes papers like this. A protest, a debate, a mixture of everything, plus some evaluation. It had so much impact that the authors were invited to give a keynote at WMT — and because it was COVID, they recorded the talk in a participatory way too, with more than ten people presenting the same paper. It's on the Masakhane website.
+
+In that first work, some people trained models, some contributed data, some did evaluations, some wrote the paper — and they were all authors. MasakhaNER took it to the limit in terms of data collection: everyone who contributed data was an author of the paper. That was probably the first time data contributors were credited that way.
+
+## What were you annotating with?
+
+For MasakhaNER, the first tool was [ELISA](https://www.youtube.com/watch?v=kj3YgY1hmIY) — Neubig connected us to Heng Ji at UIUC, and she released a tool her lab had developed for annotation. It's not really public — we had to host it ourselves on Google Cloud. One challenge was that the community includes both English and French speakers, so I recorded short videos on how to use the tool and gave them to others to watch and learn. It had this interface where you select things token by token — one of the most interesting tools I've used.
+
+But ELISA was too customized for NER. For [MasakhaPOS](https://arxiv.org/pdf/2305.13989), our part-of-speech project, we used IO Annotator, built by Sascha Heyer — a software engineer who built it essentially alone, and who reached out to us because he loved the Masakhane project. Because we knew the developer, we could request changes for part-of-speech tagging and he implemented them for free — he wasn't even an author, we just acknowledged him in the paper. Unfortunately the tool is no longer available, which makes me sad.
+
+After that we moved to [Label Studio](https://labelstud.io/), now HumanSignal. The first person to use it was Shamsuddeen [Muhammad], for NaijaSenti, and it was very successful. When I wrote to them, what we could pay was too small for their packages — so they decided to give it to us for free, as long as we could show we were using it. Every year they ask what we've achieved, we list all the completed projects, and they extend the subscription. We've done tons of projects with it. And it's not just them — Masakhane's Slack is also provided free for the community. Open source is part of it, but really the lesson is that community free versions of commercial tools have been very impactful.
+
+## What about money?
+
+The funds from [Lacuna Fund](https://lacunafund.org/) were really instrumental. Since 2021 they supported African NLP for three or four years — though unfortunately I think they've now run out of funding. With those funds we scaled MasakhaNER from ten languages to twenty. Bigger data, more languages.
+
+## Where are the gaps now?
+
+The Masakhane Research Foundation has grants to create new tools — it's one of their priorities. For example, tools to help with recording audio. Speech is a frontier where the tooling still isn't there in the way it now is for text.
+
+## Have the big models improved?
+
+Things are improving — but we don't know why they improve. I don't think there's more investment in multilinguality these days; most labs are more interested in agentic capabilities and more difficult problems, which makes sense. My personal view is that the scores are getting better not because labs invest more in multilingual work, but just because the models are getting better at simpler tasks.
+
+Most reports now don't even provide evaluation on multilingual benchmarks. The latest releases from Google, from OpenAI, from Anthropic — they don't evaluate on multilingual benchmarks at all. Previously it was one of the priorities they showed in their progress.
+
+The most widely used, most difficult benchmark is [OpenAI's MMMLU](https://huggingface.co/datasets/openai/MMMLU). That was actually a missed opportunity for us — internally, people at OpenAI already knew they were working on it while we were building Uhura, and they kept asking us about MMLU. We didn't know. We could have contributed and scaled it to more African languages. It became the dominant one. Then Cohere Labs built another version, Global-MMLU, led by Sara Hooker — they added annotations to identify culturally-specific versus culturally-agnostic questions, and it became even more widely used, including a smaller [lite version](https://huggingface.co/datasets/CohereLabs/Global-MMLU-Lite) that some people prefer to evaluate on.
+
+## You're still running the evals.
+
+Yes — [AfroBench](https://huggingface.co/spaces/McGill-NLP/AfroBench) is still a live leaderboard, and there's an AfroBench-Lite as well. We've seen a lot of improvement — even for low-resource languages the frontier models are now in the 80s and 90s, almost saturated on some tasks. Though I suspect some of the datasets I created are already in their training data.
+
+## How are they used on the ground?
+
+Some people are really passionate about use cases in education — maths and STEM education in African languages. The tools are great at math now. For day-to-day questions, people prefer to use English or French or the dominant languages. But for a lot of humanitarian purposes people are using them — helping pregnant women, maternal health, things like that.
+
+The big practical issue now is API credits — people are getting tired of paying a lot for them. So there's a lot of interest in small language models. In our lab we created [AfriqueLLM](https://aclanthology.org/2026.acl-long.267.pdf), adapting strong open models to twenty African languages. They're not at the frontier-lab level, but if you have a small model and a small GPU, you don't pay for credits. And most small companies don't need agentic abilities — they need translation, or speech recognition for call centers. Paying frontier prices for that doesn't make sense.
+
+David Adelani is an Assistant Professor at McGill University's School of Computer Science, a Core Academic Member at Mila – Quebec AI Institute, and a Canada CIFAR AI Chair. You can find his work at [dadelani.github.io](https://dadelani.github.io/) and follow Masakhane at [masakhane.io](https://www.masakhane.io/).

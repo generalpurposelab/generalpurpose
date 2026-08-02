@@ -3,13 +3,22 @@
 import { useEffect, useMemo, useRef, type CSSProperties } from "react"
 
 import {
-  PRODUCT_DOT_SCALES,
+  getIdentityDotPattern,
   type IdentityPattern,
 } from "@/components/gp-product-scales"
+import {
+  emitPointerWake,
+  randomWakeAccent,
+  WAKE_DIRECTION_VECTORS,
+  type WakeAccent,
+} from "@/components/pointer-wake-engine"
+import {
+  DEFAULT_POINTER_WAKE_SETTINGS,
+  type PointerWakeSettings,
+} from "@/components/pointer-wake-settings"
 
 type DotStyle = CSSProperties & {
   "--dot-delay": string
-  "--dot-pointer-scale": number
   "--dot-scale": number
 }
 
@@ -21,14 +30,61 @@ type GridStyle = CSSProperties & {
 
 const SOURCE_GRID_COLUMNS = 30
 const GRID_SIZE = 104.56
-const DOT_SIZE = 1.422
-const POINTER_PEAK_SCALE = 1.65
+const POINTER_TRAIL_CUTOFF = 0.006
+const PORTRAIT_MAX_SCALE = 3.1
+const PORTRAIT_QUANTIZATION_LEVELS = 64
+const dotScaleCache = new Map<string, readonly number[]>()
 
-function resampleDotScales(source: readonly number[], resolution: number) {
-  if (resolution === SOURCE_GRID_COLUMNS) return Array.from(source)
+type IdentityWakeDot = {
+  accent: WakeAccent
+  alpha: number
+  column: number
+  direction: number
+  nextStep: number
+  propagated: boolean
+  row: number
+}
+
+export type IdentityPointerSettings = PointerWakeSettings &
+  Readonly<{
+    dotSize: number
+  }>
+
+export const DEFAULT_IDENTITY_POINTER_SETTINGS: IdentityPointerSettings = {
+  dotSize: 1.42,
+  ...DEFAULT_POINTER_WAKE_SETTINGS,
+}
+
+function decodeScaleLevel(character: string) {
+  const code = character.charCodeAt(0)
+
+  if (code >= 65 && code <= 90) return code - 65
+  if (code >= 97 && code <= 122) return code - 71
+  if (code >= 48 && code <= 57) return code + 4
+  if (character === "-") return 62
+  if (character === "_") return 63
+
+  throw new Error(`Invalid compact identity scale: ${character}`)
+}
+
+function decodeDotScales(levels: string) {
+  const scaleRange = PORTRAIT_MAX_SCALE - 1
+
+  return Array.from(levels, (character) => {
+    const level = decodeScaleLevel(character)
+    return 1 + scaleRange * (level / (PORTRAIT_QUANTIZATION_LEVELS - 1))
+  })
+}
+
+function resampleDotScales(
+  source: readonly number[],
+  sourceColumns: number,
+  resolution: number
+) {
+  if (resolution === sourceColumns) return source
 
   const scales: number[] = []
-  const sourceSpan = SOURCE_GRID_COLUMNS - 1
+  const sourceSpan = sourceColumns - 1
   const targetSpan = resolution - 1
 
   for (let row = 0; row < resolution; row += 1) {
@@ -42,10 +98,10 @@ function resampleDotScales(source: readonly number[], resolution: number) {
       const left = Math.floor(sourceColumn)
       const right = Math.min(left + 1, sourceSpan)
       const horizontalMix = sourceColumn - left
-      const topLeft = source[top * SOURCE_GRID_COLUMNS + left]
-      const topRight = source[top * SOURCE_GRID_COLUMNS + right]
-      const bottomLeft = source[bottom * SOURCE_GRID_COLUMNS + left]
-      const bottomRight = source[bottom * SOURCE_GRID_COLUMNS + right]
+      const topLeft = source[top * sourceColumns + left]
+      const topRight = source[top * sourceColumns + right]
+      const bottomLeft = source[bottom * sourceColumns + left]
+      const bottomRight = source[bottom * sourceColumns + right]
       const topScale = topLeft + (topRight - topLeft) * horizontalMix
       const bottomScale =
         bottomLeft + (bottomRight - bottomLeft) * horizontalMix
@@ -57,24 +113,57 @@ function resampleDotScales(source: readonly number[], resolution: number) {
   return scales
 }
 
+function getDotScales(pattern: IdentityPattern | null, resolution: number) {
+  const cacheKey = `${pattern ?? "default"}:${resolution}`
+  const cached = dotScaleCache.get(cacheKey)
+  if (cached) return cached
+
+  let scales: readonly number[]
+
+  if (pattern) {
+    const dotPattern = getIdentityDotPattern(pattern)
+    scales = resampleDotScales(
+      decodeDotScales(dotPattern.levels),
+      dotPattern.columns,
+      resolution
+    )
+  } else {
+    scales = Array.from({ length: resolution * resolution }, () => 1)
+  }
+
+  dotScaleCache.set(cacheKey, scales)
+  return scales
+}
+
+export function preloadIdentityPatterns(
+  patterns: readonly IdentityPattern[],
+  resolution = SOURCE_GRID_COLUMNS
+) {
+  for (const pattern of patterns) getDotScales(pattern, resolution)
+}
+
 export function IdentityGrid({
   pattern,
+  pointerSettings = DEFAULT_IDENTITY_POINTER_SETTINGS,
   resolution = SOURCE_GRID_COLUMNS,
 }: {
   pattern: IdentityPattern | null
+  pointerSettings?: IdentityPointerSettings
   resolution?: number
 }) {
+  if (!Number.isInteger(resolution) || resolution < 2) {
+    throw new RangeError(
+      "IdentityGrid resolution must be an integer of at least 2"
+    )
+  }
+
   const gridRef = useRef<HTMLSpanElement>(null)
-  const dotSize = DOT_SIZE
+  const { accent, density, dotSize, opacity, radius, trail, turbulence } =
+    pointerSettings
   const dotGap = (GRID_SIZE - resolution * dotSize) / (resolution - 1)
   const dotPitch = dotSize + dotGap
-  const pointerRadius = dotPitch * 2.4
-  const pointerRange = Math.ceil(pointerRadius / dotPitch)
   const scales = useMemo(
-    () =>
-      pattern
-        ? resampleDotScales(PRODUCT_DOT_SCALES[pattern], resolution)
-        : Array.from({ length: resolution * resolution }, () => 1),
+    () => getDotScales(pattern, resolution),
     [pattern, resolution]
   )
   const gridStyle: GridStyle = {
@@ -88,73 +177,152 @@ export function IdentityGrid({
     if (!grid) return
 
     const dots = Array.from(grid.children) as HTMLSpanElement[]
+    const activeDots = new Map<number, IdentityWakeDot>()
+    const rootStyles = window.getComputedStyle(document.documentElement)
+    const orangeAccent =
+      rootStyles.getPropertyValue("--accent-color").trim() || "#fd7804"
+    const blueAccent =
+      rootStyles.getPropertyValue("--accent-blue-color").trim() || "#016efd"
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches
-    const followStrength = reducedMotion ? 1 : 0.28
-    let activeDots = new Set<number>()
+    const settings: PointerWakeSettings = {
+      accent,
+      density,
+      opacity,
+      radius,
+      trail,
+      turbulence,
+    }
     let frame: number | null = null
-    let settleTimer: number | null = null
-    let pointerIsInside = false
-    let pointerX = 0
-    let pointerY = 0
-    let targetX = 0
-    let targetY = 0
+    let lastFrame = performance.now()
+    let lastPointer: { x: number; y: number } | null = null
 
-    const renderPointerField = () => {
-      pointerX += (targetX - pointerX) * followStrength
-      pointerY += (targetY - pointerY) * followStrength
+    const resetDot = (index: number) => {
+      dots[index].style.removeProperty("background-color")
+      dots[index].style.removeProperty("opacity")
+    }
 
-      const pointerColumn = (pointerX - dotSize / 2) / dotPitch
-      const pointerRow = (pointerY - dotSize / 2) / dotPitch
-      const minColumn = Math.max(0, Math.floor(pointerColumn - pointerRange))
-      const maxColumn = Math.min(
-        resolution - 1,
-        Math.ceil(pointerColumn + pointerRange)
-      )
-      const minRow = Math.max(0, Math.floor(pointerRow - pointerRange))
-      const maxRow = Math.min(
-        resolution - 1,
-        Math.ceil(pointerRow + pointerRange)
-      )
-      const nextActiveDots = new Set<number>()
+    const addWakeDot = (
+      column: number,
+      row: number,
+      alpha: number,
+      direction: number,
+      dotAccent: WakeAccent,
+      now: number
+    ) => {
+      if (column < 0 || column >= resolution || row < 0 || row >= resolution) {
+        return
+      }
 
-      for (let row = minRow; row <= maxRow; row += 1) {
-        for (let column = minColumn; column <= maxColumn; column += 1) {
-          const index = row * resolution + column
-          const dotX = column * dotPitch + dotSize / 2
-          const dotY = row * dotPitch + dotSize / 2
-          const distance = Math.hypot(dotX - pointerX, dotY - pointerY)
+      const index = row * resolution + column
+      const existing = activeDots.get(index)
 
-          if (distance >= pointerRadius) continue
+      if (existing) {
+        if (alpha > existing.alpha) {
+          existing.alpha = alpha
+          existing.direction = direction
+          existing.accent ||= dotAccent
+          existing.nextStep = now + 28 + Math.random() * 58
+          existing.propagated = false
+        }
+        return
+      }
 
-          const proximity = 1 - distance / pointerRadius
-          const liquidFalloff =
-            proximity * proximity * (3 - 2 * proximity)
-          const scale =
-            1 + (POINTER_PEAK_SCALE - 1) * liquidFalloff
+      activeDots.set(index, {
+        accent: dotAccent,
+        alpha,
+        column,
+        direction,
+        nextStep: now + 28 + Math.random() * 58,
+        propagated: false,
+        row,
+      })
+    }
 
-          dots[index].style.setProperty(
-            "--dot-pointer-scale",
-            scale.toFixed(3)
+    const emitWake = (
+      x: number,
+      y: number,
+      deltaX: number,
+      deltaY: number,
+      now: number
+    ) => {
+      emitPointerWake({
+        deltaX,
+        deltaY,
+        emit: (dotX, dotY, alpha, direction) => {
+          addWakeDot(
+            Math.round((dotX - dotSize / 2) / dotPitch),
+            Math.round((dotY - dotSize / 2) / dotPitch),
+            alpha,
+            direction,
+            randomWakeAccent(settings.accent),
+            now
           )
-          nextActiveDots.add(index)
+        },
+        pitch: dotPitch,
+        settings,
+        x,
+        y,
+      })
+    }
+
+    const renderPointerWake = (now: number) => {
+      const elapsedFrames = Math.min(4, (now - lastFrame) / (1000 / 60))
+      const decay = reducedMotion
+        ? 0.9
+        : Math.pow(settings.trail, elapsedFrames)
+      lastFrame = now
+
+      for (const [index, dot] of Array.from(activeDots.entries())) {
+        dot.alpha *= decay
+
+        if (dot.alpha <= POINTER_TRAIL_CUTOFF) {
+          resetDot(index)
+          activeDots.delete(index)
+          continue
+        }
+
+        if (
+          !reducedMotion &&
+          !dot.propagated &&
+          now >= dot.nextStep &&
+          dot.alpha > settings.opacity * 0.12
+        ) {
+          dot.propagated = true
+          const turn =
+            Math.random() < settings.turbulence
+              ? Math.random() < 0.5
+                ? -1
+                : 1
+              : 0
+          const nextDirection = (dot.direction + turn + 8) % 8
+          const [columnStep, rowStep] = WAKE_DIRECTION_VECTORS[nextDirection]
+
+          addWakeDot(
+            dot.column + columnStep,
+            dot.row + rowStep,
+            dot.alpha * (0.62 + settings.density * 0.22),
+            nextDirection,
+            dot.accent !== 0 && Math.random() < 0.72 ? dot.accent : 0,
+            now
+          )
+        }
+
+        const activity = Math.min(1, dot.alpha / settings.opacity)
+        dots[index].style.opacity = (1 - activity).toFixed(3)
+
+        if (dot.accent !== 0) {
+          const accentColor = dot.accent === 1 ? orangeAccent : blueAccent
+          dots[index].style.backgroundColor =
+            `color-mix(in srgb, ${accentColor} ${Math.round(activity * 100)}%, currentColor)`
+        } else {
+          dots[index].style.removeProperty("background-color")
         }
       }
 
-      for (const index of activeDots) {
-        if (!nextActiveDots.has(index)) {
-          dots[index].style.setProperty("--dot-pointer-scale", "1")
-        }
-      }
-
-      activeDots = nextActiveDots
-      const isFollowing =
-        Math.abs(targetX - pointerX) > 0.05 ||
-        Math.abs(targetY - pointerY) > 0.05
-
-      if (pointerIsInside && isFollowing) {
-        frame = window.requestAnimationFrame(renderPointerField)
+      if (activeDots.size > 0) {
+        frame = window.requestAnimationFrame(renderPointerWake)
       } else {
         frame = null
       }
@@ -163,38 +331,25 @@ export function IdentityGrid({
     const handlePointerMove = (event: PointerEvent) => {
       if (event.pointerType === "touch") return
 
-      const bounds = grid.getBoundingClientRect()
-      targetX = event.clientX - bounds.left
-      targetY = event.clientY - bounds.top
+      const previous = lastPointer ?? { x: event.offsetX, y: event.offsetY }
+      const now = performance.now()
+      emitWake(
+        event.offsetX,
+        event.offsetY,
+        event.offsetX - previous.x,
+        event.offsetY - previous.y,
+        now
+      )
+      lastPointer = { x: event.offsetX, y: event.offsetY }
 
-      if (!pointerIsInside) {
-        pointerX = targetX
-        pointerY = targetY
-      }
-
-      pointerIsInside = true
-      if (settleTimer !== null) window.clearTimeout(settleTimer)
-      grid.classList.add("identity-grid--interactive")
-
-      if (frame === null) {
-        frame = window.requestAnimationFrame(renderPointerField)
+      if (frame === null && activeDots.size > 0) {
+        lastFrame = now
+        frame = window.requestAnimationFrame(renderPointerWake)
       }
     }
 
     const handlePointerLeave = () => {
-      pointerIsInside = false
-      if (frame !== null) window.cancelAnimationFrame(frame)
-      frame = null
-
-      for (const index of activeDots) {
-        dots[index].style.setProperty("--dot-pointer-scale", "1")
-      }
-      activeDots.clear()
-
-      settleTimer = window.setTimeout(() => {
-        grid.classList.remove("identity-grid--interactive")
-        settleTimer = null
-      }, reducedMotion ? 0 : 180)
+      lastPointer = null
     }
 
     grid.addEventListener("pointermove", handlePointerMove)
@@ -206,9 +361,19 @@ export function IdentityGrid({
       grid.removeEventListener("pointerleave", handlePointerLeave)
       grid.removeEventListener("pointercancel", handlePointerLeave)
       if (frame !== null) window.cancelAnimationFrame(frame)
-      if (settleTimer !== null) window.clearTimeout(settleTimer)
+      for (const index of activeDots.keys()) resetDot(index)
     }
-  }, [dotPitch, dotSize, pointerRadius, pointerRange, resolution])
+  }, [
+    accent,
+    density,
+    dotPitch,
+    dotSize,
+    opacity,
+    radius,
+    resolution,
+    trail,
+    turbulence,
+  ])
 
   return (
     <span
@@ -224,7 +389,6 @@ export function IdentityGrid({
         const distanceFromCenter = Math.hypot(row - center, column - center)
         const style: DotStyle = {
           "--dot-delay": `${Math.round(distanceFromCenter * 5)}ms`,
-          "--dot-pointer-scale": 1,
           "--dot-scale": scale,
         }
 
@@ -234,15 +398,13 @@ export function IdentityGrid({
   )
 }
 
-export function IdentityWordmark() {
-  return <span className="identity-wordmark" aria-hidden="true" />
-}
-
 export function GeneralPurposeIdentity({
   pattern = null,
+  pointerSettings = DEFAULT_IDENTITY_POINTER_SETTINGS,
   resolution = SOURCE_GRID_COLUMNS,
 }: {
   pattern?: IdentityPattern | null
+  pointerSettings?: IdentityPointerSettings
   resolution?: number
 }) {
   return (
@@ -251,8 +413,11 @@ export function GeneralPurposeIdentity({
       role="img"
       aria-label={`General Purpose, ${resolution} by ${resolution} dot grid`}
     >
-      <IdentityGrid pattern={pattern} resolution={resolution} />
-      <IdentityWordmark />
+      <IdentityGrid
+        pattern={pattern}
+        pointerSettings={pointerSettings}
+        resolution={resolution}
+      />
     </div>
   )
 }
