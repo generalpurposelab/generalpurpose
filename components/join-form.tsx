@@ -57,6 +57,16 @@ export function JoinForm() {
         />
       </div>
 
+      <label className="join-newsletter" htmlFor="join-newsletter">
+        <input
+          id="join-newsletter"
+          name="newsletter"
+          type="checkbox"
+          defaultChecked
+        />
+        <span>Add me to the General Purpose newsletter.</span>
+      </label>
+
       <div className="join-honeypot" aria-hidden="true">
         <label htmlFor="join-website">Website</label>
         <input

@@ -2,7 +2,6 @@
 
 import {
   useEffect,
-  useRef,
   useState,
   type FocusEvent,
   type PointerEvent,
@@ -25,57 +24,7 @@ import {
 //
 type ChallengeByPattern = Readonly<Partial<Record<IdentityPattern, string>>>
 
-const DEFAULT_CHALLENGE = "some of the planet's most pressing challenges."
-
-function TaglineChallenge({ value }: { value: string }) {
-  const previousValue = useRef(value)
-  const [transition, setTransition] = useState<{
-    current: string
-    previous: string | null
-    version: number
-  }>({ current: value, previous: null, version: 0 })
-
-  useEffect(() => {
-    const previous = previousValue.current
-    if (value === previous) return
-
-    previousValue.current = value
-    setTransition((current) => ({
-      current: value,
-      previous,
-      version: current.version + 1,
-    }))
-  }, [value])
-
-  const finishTransition = () => {
-    setTransition((current) =>
-      current.version === transition.version
-        ? { ...current, previous: null }
-        : current
-    )
-  }
-
-  return (
-    <span className="tagline-challenge">
-      {transition.previous ? (
-        <span
-          aria-hidden="true"
-          className="tagline-challenge-copy tagline-challenge-copy--outgoing"
-          key={`outgoing-${transition.version}`}
-          onAnimationEnd={finishTransition}
-        >
-          {transition.previous}
-        </span>
-      ) : null}
-      <span
-        className={`tagline-challenge-copy${transition.previous ? " tagline-challenge-copy--incoming" : ""}`}
-        key={`current-${transition.version}`}
-      >
-        {transition.current}
-      </span>
-    </span>
-  )
-}
+const DEFAULT_CHALLENGE = "some of the planet’s most pressing challenges."
 
 function patternFromTarget(target: EventTarget | null): IdentityPattern | null {
   if (!(target instanceof Element)) return null
@@ -97,9 +46,11 @@ function preloadTarget(target: EventTarget | null) {
 
 export function HomeIdentityPreview({
   challengeByPattern,
+  className,
   children,
 }: {
   challengeByPattern: ChallengeByPattern
+  className: string
   children: ReactNode
 }) {
   const [hoveredPattern, setHoveredPattern] = useState<IdentityPattern | null>(
@@ -150,7 +101,7 @@ export function HomeIdentityPreview({
   }
 
   return (
-    <main className="main">
+    <main className={`main ${className}`}>
       {/* <ThemeToggle /> */}
       {/* Pointer wake tuner temporarily hidden. */}
       <PagePointerWake enabled settings={DEFAULT_PAGE_POINTER_WAKE_SETTINGS} />
@@ -162,10 +113,10 @@ export function HomeIdentityPreview({
         onPointerOver={handlePointerOver}
       >
         <GeneralPurposeIdentity pattern={activePattern} resolution={24} />
-        <p className="tagline">
-          <span>Frontier intelligence to </span>
-          <TaglineChallenge value={challenge} />
-        </p>
+        <h1 className="tagline">
+          <span>Frontier intelligence for </span>
+          <span>{challenge}</span>
+        </h1>
         {children}
       </div>
     </main>

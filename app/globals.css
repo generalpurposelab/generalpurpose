@@ -152,7 +152,7 @@ body {
   display: block;
   width: 97.33px;
   height: 32.56px;
-  background: currentcolor;
+  background: var(--home-foreground);
   pointer-events: none;
   -webkit-mask: url("/assets/general-purpose-wordmark.svg") center / contain
     no-repeat;
@@ -486,50 +486,16 @@ body {
 }
 
 .tagline {
-  color: var(--home-secondary);
-  font-size: 14px;
-  line-height: 1.4;
   min-height: 2.8em;
   margin-bottom: 24px;
-}
-
-.tagline-challenge {
-  display: inline-grid;
-  vertical-align: baseline;
-}
-
-.tagline-challenge-copy {
-  grid-area: 1 / 1;
-}
-
-.tagline-challenge-copy--incoming {
-  animation: tagline-challenge-in var(--identity-morph-duration)
-    var(--identity-morph-easing) both;
-}
-
-.tagline-challenge-copy--outgoing {
-  animation: tagline-challenge-out var(--identity-morph-duration)
-    var(--identity-morph-easing) both;
-}
-
-@keyframes tagline-challenge-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes tagline-challenge-out {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-  }
+  color: var(--home-secondary);
+  font-family: var(--font-exposure), serif;
+  font-size: 14px;
+  font-variation-settings: "EXPO" 20;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.4;
+  text-wrap: balance;
 }
 
 .section {
@@ -954,6 +920,31 @@ body:has(.dip-page) {
 
 .join-field :is(input, textarea):focus {
   border-color: #999;
+}
+
+.join-newsletter {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: fit-content;
+  color: rgba(0, 0, 0, 0.65);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 460;
+  line-height: 1.4;
+}
+
+.join-newsletter input {
+  flex: 0 0 auto;
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-top: 0.0625rem;
+  accent-color: #111;
+}
+
+.join-newsletter input:focus-visible {
+  outline: 2px solid var(--dip-focus);
+  outline-offset: 2px;
 }
 
 .join-submit {
@@ -1442,10 +1433,6 @@ body:has(.dip-page) {
     animation-duration: 0.01ms;
   }
 
-  .tagline-challenge-copy {
-    animation-duration: 0.01ms;
-  }
-
   .pointer-wake-tuner-switch,
   .pointer-wake-tuner-switch::after,
   .main,
@@ -1607,6 +1594,14 @@ body:has(.dip-page) {
 
 :root[data-theme="dark"] .join-field :is(input, textarea):focus {
   border-color: #777;
+}
+
+:root[data-theme="dark"] .join-newsletter {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+:root[data-theme="dark"] .join-newsletter input {
+  accent-color: #ededed;
 }
 
 :root[data-theme="dark"] .join-submit {
