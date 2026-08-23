@@ -30,6 +30,7 @@ export async function submitJoinRequest(
   const name = String(formData.get("name") ?? "").trim()
   const email = String(formData.get("email") ?? "").trim()
   const message = String(formData.get("message") ?? "").trim()
+  const newsletter = formData.get("newsletter") === "on"
 
   if (
     !name ||
@@ -64,6 +65,8 @@ export async function submitJoinRequest(
         name: sheetSafe(name),
         email: sheetSafe(email),
         message: sheetSafe(message),
+        newsletter,
+        newsletterEmail: newsletter ? email : undefined,
         secret: webhookSecret,
       }),
     })

@@ -15,7 +15,7 @@ export function JoinForm() {
   if (state.status === "success") {
     return (
       <p className="join-confirmation" role="status">
-        Thanks — you&apos;re on the list. We&apos;ll be in touch.
+        Thanks — we received your note. We&apos;ll be in touch.
       </p>
     )
   }
@@ -56,6 +56,16 @@ export function JoinForm() {
           required
         />
       </div>
+
+      <label className="join-newsletter" htmlFor="join-newsletter">
+        <input
+          defaultChecked
+          id="join-newsletter"
+          name="newsletter"
+          type="checkbox"
+        />
+        <span>Add me to the General Purpose newsletter.</span>
+      </label>
 
       <div className="join-honeypot" aria-hidden="true">
         <label htmlFor="join-website">Website</label>

@@ -1,5 +1,7 @@
 "use client"
 
+import type { Route } from "next"
+import Link from "next/link"
 import { useEffect, useMemo, useRef, type CSSProperties } from "react"
 
 import {
@@ -398,23 +400,56 @@ export function IdentityGrid({
   )
 }
 
-function IdentityWordmark() {
-  return <span className="identity-wordmark" aria-hidden="true" />
+function IdentityWordmark({
+  href,
+  previewPattern,
+}: {
+  href?: Route
+  previewPattern?: IdentityPattern
+}) {
+  if (href) {
+    return (
+      <Link
+        aria-label="About General Purpose"
+        className="identity-wordmark identity-wordmark--interactive"
+        data-identity-pattern={previewPattern}
+        href={href}
+      />
+    )
+  }
+
+  return (
+    <span
+      aria-hidden={previewPattern ? undefined : true}
+      aria-label={
+        previewPattern ? "General Purpose wordmark, preview globe" : undefined
+      }
+      className={`identity-wordmark${previewPattern ? " identity-wordmark--interactive" : ""}`}
+      data-identity-pattern={previewPattern}
+      tabIndex={previewPattern ? 0 : undefined}
+    />
+  )
 }
 
 export function GeneralPurposeIdentity({
   pattern = null,
   pointerSettings = DEFAULT_IDENTITY_POINTER_SETTINGS,
   resolution = SOURCE_GRID_COLUMNS,
+  wordmarkHref,
+  wordmarkPreviewPattern,
 }: {
   pattern?: IdentityPattern | null
   pointerSettings?: IdentityPointerSettings
   resolution?: number
+  wordmarkHref?: Route
+  wordmarkPreviewPattern?: IdentityPattern
 }) {
+  const hasInteractiveWordmark = Boolean(wordmarkHref || wordmarkPreviewPattern)
+
   return (
     <div
       className={`identity${pattern ? " identity--active" : ""}`}
-      role="img"
+      role={hasInteractiveWordmark ? "group" : "img"}
       aria-label={`General Purpose, ${resolution} by ${resolution} dot grid`}
     >
       <IdentityGrid
@@ -422,7 +457,10 @@ export function GeneralPurposeIdentity({
         pointerSettings={pointerSettings}
         resolution={resolution}
       />
-      <IdentityWordmark />
+      <IdentityWordmark
+        href={wordmarkHref}
+        previewPattern={wordmarkPreviewPattern}
+      />
     </div>
   )
 }

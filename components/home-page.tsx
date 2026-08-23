@@ -3,6 +3,7 @@ import type { Route } from "next"
 
 import { HomeIdentityPreview } from "@/components/home-identity-preview"
 import type { IdentityPattern } from "@/components/gp-product-scales"
+import { exposureFontVariable } from "@/lib/home-fonts"
 
 type HomeWritingHref = Route<`/projects/${string}` | `/writing/${string}`>
 
@@ -81,12 +82,15 @@ export function HomePage({
   )?.pattern
 
   return (
-    <HomeIdentityPreview challengeByPattern={challengeByPattern}>
+    <HomeIdentityPreview
+      challengeByPattern={challengeByPattern}
+      className={exposureFontVariable}
+    >
       <section className="section">
         <h2 className="heading">Expeditions</h2>
         <table className="writing-table projects-table">
           <tbody>
-            {projects.map((project) => (
+            {projects.map((project, index) => (
               <tr className="writing-row project-row" key={project.slug}>
                 <td className="writing-title project-title">
                   <Link
@@ -103,9 +107,9 @@ export function HomePage({
                   ) : null}
                 </td>
                 <td className="writing-date">
-                  <time dateTime={project.dateTime}>
-                    {monthYear(project.dateTime)}
-                  </time>
+                  <span aria-label={`Expedition ${index + 1}`}>
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
                 </td>
               </tr>
             ))}
@@ -122,9 +126,6 @@ export function HomePage({
                 <Link href="/map" data-identity-pattern={uhuraPattern}>
                   Glottomap
                 </Link>
-              </td>
-              <td className="writing-date">
-                <time dateTime="2026-08-01">Aug 2026</time>
               </td>
             </tr>
           </tbody>

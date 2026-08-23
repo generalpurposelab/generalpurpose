@@ -25,7 +25,7 @@ import {
 //
 type ChallengeByPattern = Readonly<Partial<Record<IdentityPattern, string>>>
 
-const DEFAULT_CHALLENGE = "some of the planet's most pressing challenges."
+const DEFAULT_CHALLENGE = "some of the planet’s most pressing challenges."
 
 function TaglineChallenge({ value }: { value: string }) {
   const previousValue = useRef(value)
@@ -97,9 +97,11 @@ function preloadTarget(target: EventTarget | null) {
 
 export function HomeIdentityPreview({
   challengeByPattern,
+  className,
   children,
 }: {
   challengeByPattern: ChallengeByPattern
+  className: string
   children: ReactNode
 }) {
   const [hoveredPattern, setHoveredPattern] = useState<IdentityPattern | null>(
@@ -150,7 +152,7 @@ export function HomeIdentityPreview({
   }
 
   return (
-    <main className="main">
+    <main className={`main ${className}`}>
       {/* <ThemeToggle /> */}
       {/* Pointer wake tuner temporarily hidden. */}
       <PagePointerWake enabled settings={DEFAULT_PAGE_POINTER_WAKE_SETTINGS} />
@@ -161,11 +163,16 @@ export function HomeIdentityPreview({
         onPointerOut={handlePointerOut}
         onPointerOver={handlePointerOver}
       >
-        <GeneralPurposeIdentity pattern={activePattern} resolution={24} />
-        <p className="tagline">
-          <span>Frontier intelligence to </span>
+        <GeneralPurposeIdentity
+          pattern={activePattern}
+          resolution={24}
+          wordmarkHref="/about"
+          wordmarkPreviewPattern="cmdk"
+        />
+        <h1 className="tagline">
+          <span className="tagline-prefix">Frontier intelligence for</span>
           <TaglineChallenge value={challenge} />
-        </p>
+        </h1>
         {children}
       </div>
     </main>

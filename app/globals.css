@@ -32,6 +32,7 @@ body {
 .main {
   --home-background: #fff;
   --home-foreground: #111;
+  --home-wordmark: #303030;
   --home-muted: #999;
   --home-secondary: #666;
   --home-rule: #eee;
@@ -49,6 +50,7 @@ body {
 :root[data-theme="dark"] .main {
   --home-background: #1a1a1a;
   --home-foreground: #ededed;
+  --home-wordmark: #eee;
   --home-muted: #707070;
   --home-secondary: #a0a0a0;
   --home-rule: #2e2e2e;
@@ -152,11 +154,20 @@ body {
   display: block;
   width: 97.33px;
   height: 32.56px;
-  background: currentcolor;
+  background: var(--home-wordmark);
   pointer-events: none;
   -webkit-mask: url("/assets/general-purpose-wordmark.svg") center / contain
     no-repeat;
   mask: url("/assets/general-purpose-wordmark.svg") center / contain no-repeat;
+}
+
+.identity-wordmark--interactive {
+  pointer-events: auto;
+}
+
+.identity-wordmark--interactive:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
 }
 
 .pointer-wake-tuner {
@@ -486,11 +497,18 @@ body {
 }
 
 .tagline {
-  color: var(--home-secondary);
-  font-size: 14px;
+  color: var(--home-wordmark);
+  font-family: var(--font-exposure), serif;
+  font-size: 16px;
+  font-variation-settings: "EXPO" 20;
+  font-weight: 400;
   line-height: 1.4;
   min-height: 2.8em;
   margin-bottom: 24px;
+}
+
+.tagline-prefix {
+  display: block;
 }
 
 .tagline-challenge {
@@ -954,6 +972,29 @@ body:has(.dip-page) {
 
 .join-field :is(input, textarea):focus {
   border-color: #999;
+}
+
+.join-newsletter {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  width: fit-content;
+  color: rgba(0, 0, 0, 0.65);
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.join-newsletter input {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-top: 0.0625rem;
+  accent-color: #111;
+}
+
+.join-newsletter input:focus-visible {
+  outline: 2px solid var(--dip-focus);
+  outline-offset: 2px;
 }
 
 .join-submit {
@@ -1607,6 +1648,14 @@ body:has(.dip-page) {
 
 :root[data-theme="dark"] .join-field :is(input, textarea):focus {
   border-color: #777;
+}
+
+:root[data-theme="dark"] .join-newsletter {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+:root[data-theme="dark"] .join-newsletter input {
+  accent-color: #ededed;
 }
 
 :root[data-theme="dark"] .join-submit {
