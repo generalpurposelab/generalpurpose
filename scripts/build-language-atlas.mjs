@@ -3,9 +3,42 @@ import { dirname, resolve } from "node:path"
 
 const OUTPUT = resolve("public/data/language-atlas.json")
 
+const WIKIDATA_SPEAKER_QUERY = `
+SELECT ?item ?glottocode ?speakers ?date ?scope ?rank WHERE {
+  ?item wdt:P1394 ?glottocode;
+    p:P1098 ?statement.
+  ?statement ps:P1098 ?speakers;
+    wikibase:rank ?rank;
+    pq:P585 ?date.
+  OPTIONAL { ?statement pq:P518 ?scope. }
+  FILTER(?rank != wikibase:DeprecatedRank)
+  FILTER(!BOUND(?scope) || ?scope IN (
+    wd:Q36870,
+    wd:Q125421,
+    wd:Q218005,
+    wd:Q16868672,
+    wd:Q13780930,
+    wd:Q924130
+  ))
+  FILTER EXISTS { ?statement prov:wasDerivedFrom ?reference. }
+}
+`
+
+const wikidataSpeakersUrl = new URL("https://query.wikidata.org/sparql")
+wikidataSpeakersUrl.searchParams.set("format", "json")
+wikidataSpeakersUrl.searchParams.set("query", WIKIDATA_SPEAKER_QUERY)
+
 const URLS = {
   glottolog:
     "https://raw.githubusercontent.com/glottolog/glottolog-cldf/master/cldf/languages.csv",
+  glottologValues:
+    "https://raw.githubusercontent.com/glottolog/glottolog-cldf/master/cldf/values.csv",
+  glottologCodes:
+    "https://raw.githubusercontent.com/glottolog/glottolog-cldf/master/cldf/codes.csv",
+  elcatLanguages:
+    "https://raw.githubusercontent.com/cldf-datasets/elcat/main/cldf/languages.csv",
+  elcatValues:
+    "https://raw.githubusercontent.com/cldf-datasets/elcat/main/cldf/values.csv",
   iso639:
     "https://iso639-3.sil.org/sites/iso639-3/files/downloads/iso-639-3.tab",
   catalogue:
@@ -17,6 +50,7 @@ const URLS = {
   fleurs: "https://huggingface.co/datasets/google/fleurs/raw/main/README.md",
   commonVoice:
     "https://raw.githubusercontent.com/common-voice/cv-dataset/main/datasets/scripted-speech/cv-corpus-26.0-2026-06-12.json",
+  wikidataSpeakers: wikidataSpeakersUrl.toString(),
 }
 
 const SOURCE_LINKS = [
@@ -24,6 +58,16 @@ const SOURCE_LINKS = [
     name: "Glottolog CLDF",
     url: "https://github.com/glottolog/glottolog-cldf",
     role: "Language identity, family and representative geography",
+  },
+  {
+    name: "Catalogue of Endangered Languages",
+    url: "https://endangeredlanguages.com/",
+    role: "Dated speaker estimates for endangered languages",
+  },
+  {
+    name: "Wikidata",
+    url: "https://www.wikidata.org/",
+    role: "Dated, cited speaker estimates where ELCat has no usable figure",
   },
   {
     name: "FLORES-200",
@@ -149,7 +193,15 @@ const RESOURCE_DESCRIPTIONS = {
 }
 
 async function fetchText(url) {
-  const response = await fetch(url)
+  const isWikidata = url.startsWith("https://query.wikidata.org/")
+  const response = await fetch(url, {
+    headers: isWikidata
+      ? {
+          Accept: "application/sparql-results+json",
+          "User-Agent": "Glottomap/1.0 (https://generalpurpose.ai)",
+        }
+      : undefined,
+  })
   if (!response.ok) {
     throw new Error(`Failed to fetch ${url}: ${response.status}`)
   }
@@ -284,25 +336,166 @@ function conciseHours(value) {
   return Math.round(value * 100) / 100
 }
 
+function speakerEstimate(value) {
+  let data
+  try {
+    data = JSON.parse(value)
+  } catch {
+    return null
+  }
+
+  const detailed = String(data["Speaker Number Text"] ?? "").trim()
+  const range = String(data["Speaker Number"] ?? "").trim()
+  const candidate = detailed || range
+  const numeric = candidate.match(
+    /^([~≈<>]?\s*\d[\d,.]*(?:\s*[-–]\s*[~≈<>]?\s*\d[\d,.]*)?)/
+  )
+  const noSpeakers = candidate.match(
+    /^(no (?:known |fully competent )?speakers?)/i
+  )
+  const text = numeric?.[1]?.trim() ?? noSpeakers?.[1] ?? null
+  if (!text) return null
+
+  const years = String(data["Date Of Info"] ?? "").match(
+    /\b(?:18|19|20)\d{2}\b/g
+  )
+  const year = years?.length
+    ? years.length === 1
+      ? years[0]
+      : `${years[0]}–${years.at(-1)}`
+    : null
+
+  return { text: text === "0" ? "No known speakers" : text, year }
+}
+
+const WIKIDATA_SCOPE_KIND = new Map([
+  ["Q36870", "L1"],
+  ["Q924130", "L1"],
+  ["Q125421", "L2"],
+  ["Q218005", null],
+  ["Q16868672", null],
+  ["Q13780930", null],
+])
+
+function wikidataId(uri) {
+  return uri?.split("/").at(-1) ?? null
+}
+
+function formatSpeakerCount(value) {
+  if (value >= 1_000_000) {
+    return new Intl.NumberFormat("en-US", {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(value)
+  }
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
+function wikidataSpeakerEstimates(result) {
+  const candidatesByGlottocode = new Map()
+
+  for (const binding of result.results?.bindings ?? []) {
+    const glottocode = binding.glottocode?.value
+    const itemId = wikidataId(binding.item?.value)
+    const value = Number(binding.speakers?.value)
+    const year = binding.date?.value?.match(/^(?:18|19|20)\d{2}/)?.[0]
+    const scopeId = wikidataId(binding.scope?.value)
+    const kind = scopeId ? WIKIDATA_SCOPE_KIND.get(scopeId) : null
+    if (
+      !glottocode ||
+      !itemId ||
+      !Number.isFinite(value) ||
+      value < 0 ||
+      !year ||
+      (scopeId && !WIKIDATA_SCOPE_KIND.has(scopeId))
+    ) {
+      continue
+    }
+
+    const candidate = {
+      value,
+      year,
+      kind,
+      rank: binding.rank?.value?.endsWith("PreferredRank") ? 2 : 1,
+      scopeRank: kind === null ? 3 : kind === "L1" ? 2 : 1,
+      itemId,
+    }
+    const candidates = candidatesByGlottocode.get(glottocode) ?? []
+    candidates.push(candidate)
+    candidatesByGlottocode.set(glottocode, candidates)
+  }
+
+  const estimates = new Map()
+  for (const [glottocode, candidates] of candidatesByGlottocode) {
+    candidates.sort(
+      (a, b) =>
+        b.rank - a.rank ||
+        Number(b.year) - Number(a.year) ||
+        b.scopeRank - a.scopeRank ||
+        a.value - b.value
+    )
+    const best = candidates[0]
+    const equivalent = candidates.filter(
+      (candidate) =>
+        candidate.rank === best.rank &&
+        candidate.year === best.year &&
+        candidate.scopeRank === best.scopeRank
+    )
+    const values = [
+      ...new Set(equivalent.map((candidate) => candidate.value)),
+    ].sort((a, b) => a - b)
+    const text =
+      values.length === 1
+        ? formatSpeakerCount(values[0])
+        : `${formatSpeakerCount(values[0])}–${formatSpeakerCount(values.at(-1))}`
+
+    estimates.set(glottocode, {
+      text,
+      year: best.year,
+      kind: best.kind,
+      source: "Wikidata",
+      url: `https://www.wikidata.org/wiki/${best.itemId}`,
+    })
+  }
+
+  return estimates
+}
+
 const [
   glottologText,
+  glottologValuesText,
+  glottologCodesText,
+  elcatLanguagesText,
+  elcatValuesText,
   isoText,
   catalogueText,
   floresReadme,
   belebeleReadme,
   fleursReadme,
   commonVoiceText,
+  wikidataSpeakersText,
 ] = await Promise.all([
   fetchText(URLS.glottolog),
+  fetchText(URLS.glottologValues),
+  fetchText(URLS.glottologCodes),
+  fetchText(URLS.elcatLanguages),
+  fetchText(URLS.elcatValues),
   fetchText(URLS.iso639),
   fetchText(URLS.catalogue),
   fetchText(URLS.flores),
   fetchText(URLS.belebele),
   fetchText(URLS.fleurs),
   fetchText(URLS.commonVoice),
+  fetchText(URLS.wikidataSpeakers),
 ])
 
 const glottologRows = parseCsv(glottologText)
+const glottologValueRows = parseCsv(glottologValuesText)
+const glottologCodeRows = parseCsv(glottologCodesText)
+const elcatLanguageRows = parseCsv(elcatLanguagesText)
+const elcatValueRows = parseCsv(elcatValuesText)
 const languageRows = glottologRows.filter((row) => row.Level === "language")
 const rowNames = new Map(glottologRows.map((row) => [row.ID, row.Name]))
 const isoAliases = parseIsoTable(isoText)
@@ -314,6 +507,51 @@ for (const row of glottologRows) {
 }
 const catalogue = JSON.parse(catalogueText)
 const commonVoice = JSON.parse(commonVoiceText)
+const wikidataSpeakers = wikidataSpeakerEstimates(
+  JSON.parse(wikidataSpeakersText)
+)
+
+const statusLabels = new Map(
+  glottologCodeRows
+    .filter((row) => row.Parameter_ID === "aes")
+    .map((row) => [
+      row.ID,
+      row.Name ? `${row.Name[0].toUpperCase()}${row.Name.slice(1)}` : null,
+    ])
+)
+const statusByGlottocode = new Map()
+for (const row of glottologValueRows) {
+  if (row.Parameter_ID !== "aes") continue
+  const label = statusLabels.get(row.Code_ID)
+  if (label) statusByGlottocode.set(row.Language_ID, label)
+}
+
+const elcatById = new Map(elcatLanguageRows.map((row) => [row.ID, row]))
+const speakerByGlottocode = new Map()
+for (const row of elcatValueRows) {
+  if (row.Parameter_ID !== "speakers" || row.preferred !== "yes") continue
+  const language = elcatById.get(row.Language_ID)
+  if (!language?.Glottocode) continue
+  const estimate = speakerEstimate(row.Value)
+  if (!estimate) continue
+
+  const next = {
+    ...estimate,
+    kind: null,
+    source: "ELCat",
+    url: `https://endangeredlanguages.com/language/${language.ID}`,
+  }
+  const previous = speakerByGlottocode.get(language.Glottocode)
+  if (!previous || (next.year && !previous.year)) {
+    speakerByGlottocode.set(language.Glottocode, next)
+  }
+}
+
+for (const [glottocode, estimate] of wikidataSpeakers) {
+  if (!speakerByGlottocode.has(glottocode)) {
+    speakerByGlottocode.set(glottocode, estimate)
+  }
+}
 
 const corrections = new Map([
   [
@@ -500,6 +738,8 @@ const languages = languageRows
       longitude: row.Longitude ? Number(row.Longitude) : null,
       countries: row.Countries ? row.Countries.split(";") : [],
       family: family || "Unclassified",
+      status: statusByGlottocode.get(row.Glottocode) ?? null,
+      speakerEstimate: speakerByGlottocode.get(row.Glottocode) ?? null,
       resources: coverageByLanguageId.get(row.ID) ?? [],
       commonVoice: cvByLanguageId.get(row.ID) ?? null,
       documentedFrom: row.First_Year_Of_Documentation
@@ -525,6 +765,9 @@ const stats = {
     (language) => language.latitude !== null && language.longitude !== null
   ).length,
   withIso: languages.filter((language) => language.iso).length,
+  withStatus: languages.filter((language) => language.status).length,
+  withSpeakerEstimate: languages.filter((language) => language.speakerEstimate)
+    .length,
   withAnyResource: languages.filter((language) => language.resources.length)
     .length,
   withText: languages.filter((language) => hasDomain(language, "text")).length,
@@ -540,7 +783,7 @@ const stats = {
 }
 
 const output = {
-  schemaVersion: 1,
+  schemaVersion: 3,
   generatedAt: new Date().toISOString(),
   definition:
     "A complete Glottolog language inventory with observed technology-resource coverage. Missing coverage means not observed in the indexed sources, not proof of absence.",
