@@ -38,8 +38,8 @@ export const metadata: Metadata = {
   },
 }
 
-// Dark mode follows the system preference; there is no manual toggle.
-const themeInitScript = `try{var q=matchMedia("(prefers-color-scheme: dark)");var s=function(){document.documentElement.dataset.theme=q.matches?"dark":"light";window.dispatchEvent(new Event("general-purpose-theme-change"))};s();q.addEventListener("change",s)}catch(e){}`
+// Respect an explicit choice first, then follow the system preference.
+const themeInitScript = `try{var k="general-purpose-home-theme";var q=matchMedia("(prefers-color-scheme: dark)");var s=function(t){document.documentElement.dataset.theme=t;window.dispatchEvent(new Event("general-purpose-theme-change"))};var a=localStorage.getItem(k);s(a==="dark"||a==="light"?a:q.matches?"dark":"light");q.addEventListener("change",function(){if(!localStorage.getItem(k))s(q.matches?"dark":"light")})}catch(e){}`
 
 export default function RootLayout({
   children,

@@ -8,6 +8,7 @@ import {
   geoPath,
 } from "d3-geo"
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -33,8 +34,14 @@ const VIEWBOX_SIZE = 720
 const GLOBE_RADIUS = VIEWBOX_SIZE * 0.432
 const INITIAL_CENTER = { latitude: 8, longitude: 18 }
 const HALF_PI = Math.PI / 2
+const MIN_ZOOM = 1
+const MAX_ZOOM = 2.4
+const ZOOM_STEP = 1.16
 
 type Color = [number, number, number]
+
+const HOME_ORANGE: Color = [253 / 255, 120 / 255, 4 / 255]
+const HOME_BLUE: Color = [1 / 255, 110 / 255, 253 / 255]
 
 interface WorldObjects extends Objects {
   countries: GeometryCollection
@@ -44,6 +51,7 @@ interface WorldObjects extends Objects {
 interface LanguageGlobeProps {
   languages: AtlasLanguage[]
   resources: AtlasResource[]
+  resetVersion: number
   selectedLanguage: AtlasLanguage | null
   onSelect: (language: AtlasLanguage | null) => void
 }
@@ -95,11 +103,11 @@ function languageDomains(language: AtlasLanguage, resources: AtlasResource[]) {
 function markerStyle(language: AtlasLanguage, resources: AtlasResource[]) {
   const domains = languageDomains(language, resources)
   if (domains.speech && domains.text && domains.translation) {
-    return { color: [0.16, 0.39, 0.95] as Color, size: 3.4 }
+    return { color: HOME_BLUE, size: 3.4 }
   }
   if (domains.speech) return { color: [0.76, 0.22, 0.64] as Color, size: 2.8 }
   if (domains.translation) {
-    return { color: [0.96, 0.46, 0.16] as Color, size: 2.8 }
+    return { color: HOME_ORANGE, size: 2.8 }
   }
   if (domains.text) return { color: [0.14, 0.64, 0.43] as Color, size: 2.5 }
   return { color: [0.49, 0.52, 0.55] as Color, size: 1.25 }
@@ -138,6 +146,7 @@ function projectLocation(
 export function LanguageGlobe({
   languages,
   resources,
+  resetVersion,
   selectedLanguage,
   onSelect,
 }: LanguageGlobeProps) {
@@ -146,8 +155,11 @@ export function LanguageGlobe({
   const countryHighlightRef = useRef<SVGPathElement>(null)
   const bordersRef = useRef<SVGPathElement>(null)
   const graticuleRef = useRef<SVGPathElement>(null)
+  const selectionSignalRef = useRef<SVGGElement>(null)
+  const zoomLayerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const centerRef = useRef(INITIAL_CENTER)
+  const zoomRef = useRef(MIN_ZOOM)
   const renderRef = useRef<(() => void) | null>(null)
   const languagesRef = useRef(languages)
   const preparedRef = useRef<PreparedLanguage[]>([])
@@ -164,6 +176,11 @@ export function LanguageGlobe({
     longitude: number
     moved: boolean
   } | null>(null)
+  const activePointersRef = useRef(new Map<number, { x: number; y: number }>())
+  const pinchRef = useRef<{
+    distance: number
+    zoom: number
+  } | null>(null)
   const hoverFrameRef = useRef<number | null>(null)
   const pendingPointerRef = useRef<{ x: number; y: number } | null>(null)
   const [hoveredLanguage, setHoveredLanguage] = useState<AtlasLanguage | null>(
@@ -172,6 +189,65 @@ export function LanguageGlobe({
   const [hoverPoint, setHoverPoint] = useState<ProjectedPoint | null>(null)
   const [hoveredCountry, setHoveredCountry] = useState<HoveredCountry | null>(
     null
+  )
+
+  const clearHover = useCallback(() => {
+    hoveringRef.current = false
+    hoveredCountryFeatureRef.current = null
+    setHoveredLanguage(null)
+    setHoverPoint(null)
+    setHoveredCountry(null)
+  }, [])
+
+  const getBaseScale = useCallback((engaged: boolean) => {
+    const layer = zoomLayerRef.current
+    const fallback = engaged ? 0.82 : 0.53
+    if (!layer) return fallback
+    const property = engaged ? "--globe-focus-scale" : "--globe-rest-scale"
+    const scale = Number.parseFloat(
+      window.getComputedStyle(layer).getPropertyValue(property)
+    )
+    return Number.isFinite(scale) ? scale : fallback
+  }, [])
+
+  const setZoom = useCallback(
+    (zoom: number) => {
+      zoomRef.current = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom))
+      const layer = zoomLayerRef.current
+      if (!layer) return
+      layer.dataset.directZoom = "true"
+      layer.style.setProperty(
+        "--globe-scale",
+        String(getBaseScale(Boolean(selectedRef.current)) * zoomRef.current)
+      )
+      layer.style.setProperty(
+        "--globe-label-scale",
+        String(1 / zoomRef.current)
+      )
+      renderRef.current?.()
+    },
+    [getBaseScale]
+  )
+
+  const settleZoom = useCallback(
+    (engaged: boolean) => {
+      zoomRef.current = MIN_ZOOM
+      const layer = zoomLayerRef.current
+      if (!layer) return
+      layer.dataset.directZoom = "false"
+      layer.style.setProperty("--globe-scale", String(getBaseScale(engaged)))
+      layer.style.setProperty("--globe-label-scale", "1")
+      renderRef.current?.()
+    },
+    [getBaseScale]
+  )
+
+  const applyZoom = useCallback(
+    (zoom: number) => {
+      setZoom(zoom)
+      clearHover()
+    },
+    [clearHover, setZoom]
   )
 
   const preparedLanguages = useMemo<PreparedLanguage[]>(
@@ -194,6 +270,7 @@ export function LanguageGlobe({
 
   useEffect(() => {
     selectedRef.current = selectedLanguage
+    settleZoom(Boolean(selectedLanguage))
     if (
       selectedLanguage &&
       selectedLanguage.latitude !== null &&
@@ -205,7 +282,12 @@ export function LanguageGlobe({
       }
     }
     renderRef.current?.()
-  }, [selectedLanguage])
+  }, [selectedLanguage, settleZoom])
+
+  useEffect(() => {
+    centerRef.current = { ...INITIAL_CENTER }
+    settleZoom(false)
+  }, [resetVersion, settleZoom])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -225,10 +307,13 @@ export function LanguageGlobe({
     let disposed = false
     let lastFrame = 0
     let visible = true
+    let selectedFill = "#f5f3ec"
+    let selectedStroke = "#101012"
 
     const render = () => {
       const center = centerRef.current
       projection.rotate([-center.longitude, -center.latitude, 0])
+      projection.scale(GLOBE_RADIUS)
 
       landRef.current?.setAttribute("d", path(land) ?? "")
       countryHighlightRef.current?.setAttribute(
@@ -239,6 +324,22 @@ export function LanguageGlobe({
       )
       bordersRef.current?.setAttribute("d", path(borders) ?? "")
       graticuleRef.current?.setAttribute("d", path(graticule) ?? "")
+
+      const selectedLanguage = selectedRef.current
+      const selectedPoint = selectedLanguage
+        ? projectLocation(selectedLanguage, center)
+        : null
+      if (selectionSignalRef.current) {
+        if (selectedPoint?.visible) {
+          selectionSignalRef.current.setAttribute(
+            "transform",
+            `translate(${selectedPoint.x * VIEWBOX_SIZE} ${selectedPoint.y * VIEWBOX_SIZE})`
+          )
+          selectionSignalRef.current.style.display = ""
+        } else {
+          selectionSignalRef.current.style.display = "none"
+        }
+      }
 
       context.clearRect(0, 0, VIEWBOX_SIZE, VIEWBOX_SIZE)
       const selectedId = selectedRef.current?.id
@@ -260,27 +361,41 @@ export function LanguageGlobe({
         context.beginPath()
         context.arc(point[0], point[1], radius, 0, Math.PI * 2)
         context.fillStyle = selected
-          ? isDarkTheme()
-            ? "#f5f3ec"
-            : "#17191c"
+          ? selectedFill
           : cssColor(item.color, item.size < 2 ? 0.72 : 0.9)
         context.fill()
         if (selected) {
           context.lineWidth = 2
-          context.strokeStyle = isDarkTheme() ? "#17191c" : "#faf9f5"
+          context.strokeStyle = selectedStroke
           context.stroke()
         }
       }
     }
     renderRef.current = render
-    render()
+    const syncThemeColors = () => {
+      const computedStyle = window.getComputedStyle(canvas)
+      selectedFill =
+        computedStyle.getPropertyValue("--atlas-selected-fill").trim() ||
+        "#f5f3ec"
+      selectedStroke =
+        computedStyle.getPropertyValue("--atlas-selected-stroke").trim() ||
+        "#101012"
+      render()
+    }
+    window.addEventListener(THEME_CHANGE_EVENT, syncThemeColors)
+    syncThemeColors()
 
     const animate = (time: number) => {
       animationFrame = null
       if (disposed || !visible) return
       if (time - lastFrame >= 30) {
         lastFrame = time
-        if (!dragRef.current && !selectedRef.current && !hoveringRef.current) {
+        if (
+          !dragRef.current &&
+          !pinchRef.current &&
+          !selectedRef.current &&
+          !hoveringRef.current
+        ) {
           centerRef.current = {
             ...centerRef.current,
             longitude: centerRef.current.longitude - 0.055,
@@ -314,18 +429,30 @@ export function LanguageGlobe({
     })
     if (svgRef.current) intersectionObserver.observe(svgRef.current)
 
-    const handleThemeChange = () => render()
-    window.addEventListener(THEME_CHANGE_EVENT, handleThemeChange)
     start()
 
     return () => {
       disposed = true
       renderRef.current = null
-      window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange)
+      window.removeEventListener(THEME_CHANGE_EVENT, syncThemeColors)
       intersectionObserver.disconnect()
       stop()
     }
   }, [])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const handleWheel = (event: globalThis.WheelEvent) => {
+      event.preventDefault()
+      const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
+      applyZoom(zoomRef.current * Math.exp(-delta * 0.0018))
+    }
+
+    canvas.addEventListener("wheel", handleWheel, { passive: false })
+    return () => canvas.removeEventListener("wheel", handleWheel)
+  }, [applyZoom])
 
   const findNearestLanguage = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current
@@ -411,7 +538,28 @@ export function LanguageGlobe({
     })
   }
 
+  const pointerDistance = () => {
+    const points = Array.from(activePointersRef.current.values())
+    if (points.length < 2) return null
+    return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y)
+  }
+
   const handlePointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
+    activePointersRef.current.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    })
+    event.currentTarget.setPointerCapture(event.pointerId)
+
+    const distance = pointerDistance()
+    if (distance !== null) {
+      pinchRef.current = { distance, zoom: zoomRef.current }
+      dragRef.current = null
+      clearHover()
+      renderRef.current?.()
+      return
+    }
+
     dragRef.current = {
       pointerId: event.pointerId,
       x: event.clientX,
@@ -426,10 +574,29 @@ export function LanguageGlobe({
     setHoverPoint(null)
     setHoveredCountry(null)
     renderRef.current?.()
-    event.currentTarget.setPointerCapture(event.pointerId)
   }
 
   const handlePointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (activePointersRef.current.has(event.pointerId)) {
+      activePointersRef.current.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY,
+      })
+    }
+
+    const pinch = pinchRef.current
+    if (pinch) {
+      const distance = pointerDistance()
+      if (distance !== null && pinch.distance > 0) {
+        const requestedZoom = pinch.zoom * (distance / pinch.distance)
+        applyZoom(requestedZoom)
+        if (requestedZoom !== zoomRef.current) {
+          pinchRef.current = { distance, zoom: zoomRef.current }
+        }
+      }
+      return
+    }
+
     const drag = dragRef.current
     if (!drag || drag.pointerId !== event.pointerId) {
       scheduleHover(event.clientX, event.clientY)
@@ -449,11 +616,44 @@ export function LanguageGlobe({
     renderRef.current?.()
   }
 
-  const handlePointerEnd = (event: PointerEvent<HTMLCanvasElement>) => {
+  const handlePointerEnd = (
+    event: PointerEvent<HTMLCanvasElement>,
+    cancelled = false
+  ) => {
+    const wasPinching = pinchRef.current !== null
     const drag = dragRef.current
-    if (!drag || drag.pointerId !== event.pointerId) return
-    dragRef.current = null
-    if (!drag.moved) {
+    activePointersRef.current.delete(event.pointerId)
+
+    if (wasPinching) {
+      dragRef.current = null
+      const remainingDistance = pointerDistance()
+      if (remainingDistance !== null) {
+        pinchRef.current = {
+          distance: remainingDistance,
+          zoom: zoomRef.current,
+        }
+      } else {
+        pinchRef.current = null
+        const remainingPointer = activePointersRef.current
+          .entries()
+          .next().value
+        if (remainingPointer) {
+          const [pointerId, point] = remainingPointer
+          dragRef.current = {
+            pointerId,
+            x: point.x,
+            y: point.y,
+            latitude: centerRef.current.latitude,
+            longitude: centerRef.current.longitude,
+            moved: true,
+          }
+        }
+      }
+    } else if (drag?.pointerId === event.pointerId) {
+      dragRef.current = null
+    }
+
+    if (!wasPinching && !cancelled && drag && !drag.moved) {
       const nearest = findNearestLanguage(event.clientX, event.clientY)
       onSelect(nearest?.language ?? null)
     }
@@ -463,6 +663,22 @@ export function LanguageGlobe({
   }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLCanvasElement>) => {
+    if (event.key === "+" || event.key === "=") {
+      event.preventDefault()
+      applyZoom(zoomRef.current * ZOOM_STEP)
+      return
+    }
+    if (event.key === "-" || event.key === "_") {
+      event.preventDefault()
+      applyZoom(zoomRef.current / ZOOM_STEP)
+      return
+    }
+    if (event.key === "0") {
+      event.preventDefault()
+      applyZoom(MIN_ZOOM)
+      return
+    }
+
     const adjustments: Partial<Record<string, [number, number]>> = {
       ArrowLeft: [-10, 0],
       ArrowRight: [10, 0],
@@ -484,87 +700,114 @@ export function LanguageGlobe({
   }
 
   return (
-    <div className={styles.globeWrap}>
-      <svg
-        ref={svgRef}
-        className={styles.globeVectorLayer}
-        viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
-        aria-hidden="true"
-      >
-        <circle
-          className={styles.globeOcean}
-          cx={VIEWBOX_SIZE / 2}
-          cy={VIEWBOX_SIZE / 2}
-          r={GLOBE_RADIUS}
-        />
-        <path ref={graticuleRef} className={styles.globeGraticule} />
-        <path ref={landRef} className={styles.globeLand} />
-        <path
-          ref={countryHighlightRef}
-          className={styles.globeCountryHighlight}
-        />
-        <path ref={bordersRef} className={styles.globeBorders} />
-        <circle
-          className={styles.globeOutline}
-          cx={VIEWBOX_SIZE / 2}
-          cy={VIEWBOX_SIZE / 2}
-          r={GLOBE_RADIUS}
-        />
-      </svg>
-      <canvas
-        ref={canvasRef}
-        className={styles.globeCanvas}
-        width={VIEWBOX_SIZE}
-        height={VIEWBOX_SIZE}
-        role="img"
-        tabIndex={0}
-        aria-label="Interactive vector globe of world languages. Drag or use arrow keys to rotate; hover a country for its name; select a language location for details."
-        onKeyDown={handleKeyDown}
-        onPointerCancel={handlePointerEnd}
-        onPointerDown={handlePointerDown}
-        onPointerLeave={() => {
-          hoveringRef.current = false
-          hoveredCountryFeatureRef.current = null
-          setHoveredLanguage(null)
-          setHoverPoint(null)
-          setHoveredCountry(null)
-          renderRef.current?.()
-        }}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerEnd}
-      />
-      {hoveredLanguage && hoverPoint ? (
-        <div
-          className={styles.mapTooltip}
-          style={{
-            left: `${hoverPoint.x * 100}%`,
-            top: `${hoverPoint.y * 100}%`,
-          }}
-        >
-          <strong>{hoveredLanguage.name}</strong>
-          <span>
-            {hoveredLanguage.resources.length
-              ? `${hoveredLanguage.resources.length} linked resource${hoveredLanguage.resources.length === 1 ? "" : "s"}`
-              : "Coverage not yet observed"}
-          </span>
+    <>
+      <div className={styles.globeWrap}>
+        <div ref={zoomLayerRef} className={styles.globeZoomLayer}>
+          <svg
+            ref={svgRef}
+            className={styles.globeVectorLayer}
+            viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
+            aria-hidden="true"
+          >
+            <circle
+              className={styles.globeOcean}
+              cx={VIEWBOX_SIZE / 2}
+              cy={VIEWBOX_SIZE / 2}
+              r={GLOBE_RADIUS}
+            />
+            <path ref={graticuleRef} className={styles.globeGraticule} />
+            <path ref={landRef} className={styles.globeLand} />
+            <path
+              ref={countryHighlightRef}
+              className={styles.globeCountryHighlight}
+            />
+            <path ref={bordersRef} className={styles.globeBorders} />
+            <g
+              ref={selectionSignalRef}
+              className={styles.selectionSignal}
+              style={{ display: "none" }}
+            >
+              <circle r="12" />
+              <circle r="26" />
+              <circle r="44" />
+              <path d="M-58 0H58M0-58V58" />
+            </g>
+            <circle
+              className={styles.globeOutline}
+              cx={VIEWBOX_SIZE / 2}
+              cy={VIEWBOX_SIZE / 2}
+              r={GLOBE_RADIUS}
+            />
+          </svg>
+          <canvas
+            ref={canvasRef}
+            className={styles.globeCanvas}
+            width={VIEWBOX_SIZE}
+            height={VIEWBOX_SIZE}
+            role="img"
+            tabIndex={0}
+            aria-label="Interactive vector globe of world languages. Drag or use arrow keys to rotate; pinch, scroll, or use plus and minus keys to zoom; hover a country for its name; select a language location for details."
+            onKeyDown={handleKeyDown}
+            onPointerCancel={(event) => handlePointerEnd(event, true)}
+            onPointerDown={handlePointerDown}
+            onPointerLeave={() => {
+              hoveringRef.current = false
+              hoveredCountryFeatureRef.current = null
+              setHoveredLanguage(null)
+              setHoverPoint(null)
+              setHoveredCountry(null)
+              renderRef.current?.()
+            }}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerEnd}
+          />
+          {hoveredLanguage && hoverPoint ? (
+            <div
+              className={styles.mapTooltip}
+              style={{
+                left: `${hoverPoint.x * 100}%`,
+                top: `${hoverPoint.y * 100}%`,
+              }}
+            >
+              <strong>{hoveredLanguage.name}</strong>
+              <span>
+                {hoveredLanguage.resources.length
+                  ? `${hoveredLanguage.resources.length} linked resource${hoveredLanguage.resources.length === 1 ? "" : "s"}`
+                  : "No indexed coverage"}
+              </span>
+            </div>
+          ) : hoveredCountry ? (
+            <div
+              className={styles.mapTooltip}
+              data-kind="country"
+              style={{
+                left: `${hoveredCountry.point.x * 100}%`,
+                top: `${hoveredCountry.point.y * 100}%`,
+              }}
+            >
+              <strong>{hoveredCountry.name}</strong>
+            </div>
+          ) : null}
         </div>
-      ) : hoveredCountry ? (
-        <div
-          className={styles.mapTooltip}
-          data-kind="country"
-          style={{
-            left: `${hoveredCountry.point.x * 100}%`,
-            top: `${hoveredCountry.point.y * 100}%`,
-          }}
+      </div>
+      <div className={styles.zoomControls} aria-label="Map zoom controls">
+        <button
+          type="button"
+          aria-label="Zoom in"
+          title="Zoom in"
+          onClick={() => applyZoom(zoomRef.current * ZOOM_STEP)}
         >
-          <strong>{hoveredCountry.name}</strong>
-          <span>Country boundary · Natural Earth</span>
-        </div>
-      ) : null}
-    </div>
+          +
+        </button>
+        <button
+          type="button"
+          aria-label="Zoom out"
+          title="Zoom out"
+          onClick={() => applyZoom(zoomRef.current / ZOOM_STEP)}
+        >
+          −
+        </button>
+      </div>
+    </>
   )
-}
-
-function isDarkTheme() {
-  return document.documentElement.dataset.theme === "dark"
 }

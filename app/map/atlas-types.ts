@@ -35,6 +35,14 @@ export interface AtlasLanguage {
   longitude: number | null
   countries: string[]
   family: string
+  status: string | null
+  speakerEstimate: {
+    text: string
+    year: string | null
+    kind: "L1" | "L2" | null
+    source: string
+    url: string
+  } | null
   resources: number[]
   commonVoice: CommonVoiceCoverage | null
   documentedFrom: number | null
@@ -51,6 +59,8 @@ export interface AtlasStats {
   languages: number
   geocoded: number
   withIso: number
+  withStatus: number
+  withSpeakerEstimate: number
   withAnyResource: number
   withText: number
   withTranslation: number
